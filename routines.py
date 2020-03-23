@@ -104,35 +104,56 @@ class aerial_shot():
 
 class flip():
     # Flip takes a vector in local coordinates and flips/dodges in that direction
-    # cancel causes the flip to cancel halfway through, which can be used to half-flip
-    def __init__(self, vector, cancel=False):
+    def __init__(self, vector, duration=0.1, delay=0.1, angle=0, boost=False, cancel=False):
         self.vector = vector.normalize()
         self.pitch = abs(self.vector[0]) * -sign(self.vector[0])
         self.yaw = abs(self.vector[1]) * sign(self.vector[1])
+        self.delay = delay if delay >= duration else duration
+        self.duration = duration
+        self.boost = boost
         self.cancel = cancel
+        self.angle = math.radians(angle) if boost else 0
+        x = math.cos(self.angle) * self.vector.x - math.sin(self.angle) * self.vector.y
+        y = math.sin(self.angle) * self.vector.x + math.cos(self.angle) * self.vector.y
+        self.preorientation = Vector3(x, y, 0)
         # the time the jump began
         self.time = -1
         # keeps track of the frames the jump button has been released
         self.counter = 0
 
     def run(self, agent):
+        # An example of pushing routines to the stack:
+        agent.line(Vector3(0, 0, 50), 2000 * self.vector.flatten(), color=[255, 0, 0])
+        agent.line(Vector3(0, 0, 50), 2000 * agent.me.forward.flatten(), color=[0, 255, 0])
+        robbies_constant = (self.vector * 1.5 * 2200 - agent.me.velocity * 1.5) * 2 * 1.5 ** -2
+        robbies_boost_constant = agent.me.forward.flatten().normalize().dot(robbies_constant.flatten().normalize()) > (0.3 if not agent.me.airborne else 0.1)
+        agent.controller.boost = robbies_boost_constant and self.boost and not agent.me.supersonic
         if self.time == -1:
             elapsed = 0
             self.time = agent.time
         else:
             elapsed = agent.time - self.time
-        if elapsed < 0.15:
-            agent.controller.jump = True
-        elif elapsed >= 0.15 and self.counter < 3:
+        if elapsed < self.delay:
+            if elapsed < self.duration:
+                agent.controller.jump = True
+            else:
+                agent.controller.jump = False
+                self.counter += 1
+            defaultPD(agent, self.preorientation)
+        elif elapsed >= self.delay and self.counter < 3:
             agent.controller.jump = False
+            defaultPD(agent, self.preorientation)
             self.counter += 1
-        elif elapsed < 0.3 or (not self.cancel and elapsed < 0.9):
+        elif elapsed < self.delay + 0.1 or (not self.cancel and elapsed < 0.9):
             agent.controller.jump = True
-            agent.controller.pitch = self.pitch
-            agent.controller.yaw = self.yaw
+            if self.angle == 0:
+                agent.controller.pitch = -1
+            else:
+                defaultPD(agent, self.vector)
+                # agent.controller.yaw = agent.controller.yaw / 2
         else:
             agent.pop()
-            agent.push(recovery())
+            agent.push(recovery(boost=self.boost, time=agent.time))
 
 
 class goto():
@@ -353,8 +374,10 @@ class kickoff():
 class recovery():
     # Point towards our velocity vector and land upright, unless we aren't moving very fast
     # A vector can be provided to control where the car points when it lands
-    def __init__(self, target=None):
+    def __init__(self, target=None, boost=False, time=0):
         self.target = target
+        self.boost = boost
+        self.start_time = time
 
     def run(self, agent):
         if self.target != None:
@@ -364,6 +387,14 @@ class recovery():
 
         defaultPD(agent, local_target)
         agent.controller.throttle = 1
+        t = (-agent.me.velocity.z - (agent.me.velocity.z ** 2 + 2 * -650 * -(agent.me.location.z - 17.01)) ** 0.5) / -650
+        if self.target is not None:
+            robbies_constant = (self.target.normalize() * t * 2200 - agent.me.velocity * t) * 2 * t ** -2
+        else:
+            robbies_constant = (agent.me.velocity.normalize() * t * 2200 - agent.me.velocity * t) * 2 * t ** -2
+        agent.line(agent.me.location, robbies_constant, color=[255, 255, 255])
+        robbies_boost_constant = agent.me.forward.normalize().dot(robbies_constant.normalize()) > 0.5
+        agent.controller.boost = robbies_boost_constant and self.boost and not agent.me.supersonic
         if not agent.me.airborne:
             agent.pop()
 
