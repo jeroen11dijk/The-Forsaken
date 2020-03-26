@@ -1,5 +1,8 @@
 from utils import *
 
+from rlbot.utils.game_state_util import GameState, BallState, CarState, Physics, Rotator, GameInfoState
+from rlbot.utils.game_state_util import Vector3 as vec3
+from objects import *
 
 # This file holds all of the mechanical tasks, called "routines", that the bot can do
 
@@ -102,16 +105,95 @@ class aerial_shot():
             agent.push(recovery())
 
 
+class wait():
+    def __init__(self, duration=0.1):
+        self.duration = duration
+        self.time = -1
+
+    def run(self, agent):
+        if self.time == -1:
+            elapsed = 0
+            self.time = agent.time
+        else:
+            elapsed = agent.time - self.time
+        if elapsed >= self.duration:
+            agent.pop()
+            agent.push(flip(agent.me.local(agent.ball.location - agent.me.location)))
+
+
+
+class set_state():
+    def __init__(self, duration=0.1):
+        self.duration = duration
+        self.time = -1
+
+    def run(self, agent):
+        if self.time == -1:
+            elapsed = 0
+            self.time = agent.time
+        else:
+            elapsed = agent.time - self.time
+        if elapsed >= self.duration:
+            agent.pop()
+            agent.set_state = False
+            ball_state = BallState(Physics(location=vec3(0, 5350, 100)))
+            game_state = GameState(ball=ball_state)
+            agent.set_game_state(game_state)
+
+
 class flip():
     # Flip takes a vector in local coordinates and flips/dodges in that direction
-    def __init__(self, vector, duration=0.1, delay=0.1, angle=0, boost=False, cancel=False):
+    def __init__(self, vector, duration=0.1, delay=0.1):
+        self.vector = vector.normalize()
+        self.pitch = abs(self.vector[0]) * -sign(self.vector[0])
+        self.yaw = abs(self.vector[1]) * sign(self.vector[1])
+        self.delay = delay if delay >= duration else duration
+        self.duration = duration
+        # the time the jump began
+        self.time = -1
+        # keeps track of the frames the jump button has been released
+        self.counter = 0
+
+    def run(self, agent):
+        if self.time == -1:
+            elapsed = 0
+            self.time = agent.time
+        else:
+            elapsed = agent.time - self.time
+        if elapsed < self.delay:
+            if elapsed < self.duration:
+                agent.controller.jump = True
+            else:
+                agent.controller.jump = False
+                self.counter += 1
+            robbies_constant = (self.vector * 1.5 * 2200 - agent.me.velocity * 1.5) * 2 * 1.5 ** -2
+            robbies_boost_constant = agent.me.forward.flatten().normalize().dot(
+                robbies_constant.flatten().normalize()) > (0.3 if not agent.me.airborne else 0.1)
+            agent.controller.boost = robbies_boost_constant and not agent.me.supersonic
+        elif elapsed >= self.delay and self.counter < 3:
+            agent.controller.jump = False
+            self.counter += 1
+        elif elapsed < 0.9:
+            agent.controller.jump = True
+            defaultPD(agent, self.vector)
+            agent.controller.pitch = self.pitch
+            if abs(self.vector[1]) < 0.175:
+                agent.controller.yaw = self.yaw
+            agent.controller.roll = 0
+        else:
+            agent.pop()
+            agent.push(recovery(self.vector, target_local=True))
+
+
+class speedflip():
+    # Flip takes a vector in local coordinates and flips/dodges in that direction
+    def __init__(self, vector, duration=0.1, delay=0.1, angle=0, boost=False):
         self.vector = vector.normalize()
         self.pitch = abs(self.vector[0]) * -sign(self.vector[0])
         self.yaw = abs(self.vector[1]) * sign(self.vector[1])
         self.delay = delay if delay >= duration else duration
         self.duration = duration
         self.boost = boost
-        self.cancel = cancel
         self.angle = math.radians(angle) if boost else 0
         x = math.cos(self.angle) * self.vector.x - math.sin(self.angle) * self.vector.y
         y = math.sin(self.angle) * self.vector.x + math.cos(self.angle) * self.vector.y
@@ -126,7 +208,8 @@ class flip():
         agent.line(Vector3(0, 0, 50), 2000 * self.vector.flatten(), color=[255, 0, 0])
         agent.line(Vector3(0, 0, 50), 2000 * agent.me.forward.flatten(), color=[0, 255, 0])
         robbies_constant = (self.vector * 1.5 * 2200 - agent.me.velocity * 1.5) * 2 * 1.5 ** -2
-        robbies_boost_constant = agent.me.forward.flatten().normalize().dot(robbies_constant.flatten().normalize()) > (0.3 if not agent.me.airborne else 0.1)
+        robbies_boost_constant = agent.me.forward.flatten().normalize().dot(robbies_constant.flatten().normalize()) > (
+            0.3 if not agent.me.airborne else 0.1)
         agent.controller.boost = robbies_boost_constant and self.boost and not agent.me.supersonic
         if self.time == -1:
             elapsed = 0
@@ -143,14 +226,11 @@ class flip():
         elif elapsed >= self.delay and self.counter < 3:
             agent.controller.jump = False
             defaultPD(agent, self.preorientation)
+            print(agent.controller.pitch, agent.controller.yaw)
             self.counter += 1
-        elif elapsed < self.delay + 0.1 or (not self.cancel and elapsed < 0.9):
+        elif elapsed < self.delay + 0.05:
             agent.controller.jump = True
-            if self.angle == 0:
-                agent.controller.pitch = -1
-            else:
-                defaultPD(agent, self.vector)
-                # agent.controller.yaw = agent.controller.yaw / 2
+            defaultPD(agent, self.vector)
         else:
             agent.pop()
             agent.push(recovery(boost=self.boost, time=agent.time))
@@ -357,37 +437,62 @@ class jump_shot():
                 agent.controller.yaw = self.y if abs(self.y) > 0.3 else 0
 
 
-class kickoff():
-    # A simple 1v1 kickoff that just drives up behind the ball and dodges
-    # misses the boost on the slight-offcenter kickoffs haha
+class center_kickoff():
     def run(self, agent):
-        target = agent.ball.location + Vector3(0, 200 * side(agent.team), 0)
+        target = Vector3(0, 3800 * side(agent.team), 0)
+        local_target = agent.me.local(target - agent.me.location)
+        defaultPD(agent, local_target)
+        defaultThrottle(agent, 2300)
+        if local_target.magnitude() < 100:
+            agent.pop()
+            agent.push(diagonal_kickoff())
+            agent.push(flip(Vector3(1, 0, 0)))
+
+
+class offcenter_kickoff():
+    def run(self, agent):
+        target = Vector3(0, 3116 * side(agent.team), 0)
+        local_target = agent.me.local(target - agent.me.location)
+        defaultPD(agent, local_target)
+        defaultThrottle(agent, 2300)
+        if local_target.magnitude() < 400:
+            agent.pop()
+            agent.push(diagonal_kickoff())
+            agent.push(flip(agent.me.local(agent.ball.location - agent.me.location)))
+
+
+class diagonal_kickoff():
+    def run(self, agent):
+        target = agent.ball.location + Vector3(0,200*side(agent.team),0)
         local_target = agent.me.local(target - agent.me.location)
         defaultPD(agent, local_target)
         defaultThrottle(agent, 2300)
         if local_target.magnitude() < 650:
             agent.pop()
-            # flip towards opponent goal
             agent.push(flip(agent.me.local(agent.foe_goal.location - agent.me.location)))
-
 
 class recovery():
     # Point towards our velocity vector and land upright, unless we aren't moving very fast
     # A vector can be provided to control where the car points when it lands
-    def __init__(self, target=None, boost=False, time=0):
+    def __init__(self, target=None, target_local=False, boost=False, time=0):
         self.target = target
+        self.target_local = target_local
         self.boost = boost
         self.start_time = time
 
     def run(self, agent):
         if self.target != None:
-            local_target = agent.me.local((self.target - agent.me.location).flatten())
+            if self.target_local:
+                local_target = self.target
+            else:
+                local_target = agent.me.local((self.target - agent.me.location).flatten())
         else:
             local_target = agent.me.local(agent.me.velocity.flatten())
 
         defaultPD(agent, local_target)
         agent.controller.throttle = 1
-        t = (-agent.me.velocity.z - (agent.me.velocity.z ** 2 + 2 * -650 * -(agent.me.location.z - 17.01)) ** 0.5) / -650
+        t = (-agent.me.velocity.z - (
+                agent.me.velocity.z ** 2 + 2 * -650 * -(agent.me.location.z - 17.01)) ** 0.5) / -650
         if self.target is not None:
             robbies_constant = (self.target.normalize() * t * 2200 - agent.me.velocity * t) * 2 * t ** -2
         else:

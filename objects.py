@@ -38,6 +38,8 @@ class GoslingAgent(BaseAgent):
         self.my_score = 0
         self.foe_score = 0
 
+        self.set_state = False
+
     def get_ready(self, packet):
         # Preps all of the objects that will be updated during play
         field_info = self.get_field_info()
@@ -49,7 +51,7 @@ class GoslingAgent(BaseAgent):
         self.ready = True
 
     def refresh_player_lists(self, packet):
-        # makes new freind/foe lists
+        # makes new friend/foe lists
         # Useful to keep separate from get_ready because humans can join/leave a match
         self.friends = [car_object(i, packet) for i in range(packet.num_cars) if
                         packet.game_cars[i].team == self.team and i != self.index]
