@@ -1,18 +1,16 @@
+from tools import find_hits
 from utils import *
 
-from rlbot.utils.game_state_util import GameState, BallState, CarState, Physics, Rotator, GameInfoState
-from rlbot.utils.game_state_util import Vector3 as vec3
-from objects import *
 
 # This file holds all of the mechanical tasks, called "routines", that the bot can do
 
 class atba():
     # An example routine that just drives towards the ball at max speed
-    def run(self, agent):
-        relative_target = agent.ball.location - agent.me.location
-        local_target = agent.me.local(relative_target)
-        defaultPD(agent, local_target)
-        defaultThrottle(agent, 2300)
+    def run(self, drone, ball_location):
+        relative_target = ball_location - drone.location
+        local_target = drone.local(relative_target)
+        defaultPD(drone, local_target)
+        defaultThrottle(drone, 2300)
 
 
 class aerial_shot():
@@ -119,26 +117,6 @@ class wait():
         if elapsed >= self.duration:
             agent.pop()
             agent.push(flip(agent.me.local(agent.ball.location - agent.me.location)))
-
-
-
-class set_state():
-    def __init__(self, duration=0.1):
-        self.duration = duration
-        self.time = -1
-
-    def run(self, agent):
-        if self.time == -1:
-            elapsed = 0
-            self.time = agent.time
-        else:
-            elapsed = agent.time - self.time
-        if elapsed >= self.duration:
-            agent.pop()
-            agent.set_state = False
-            ball_state = BallState(Physics(location=vec3(0, 5350, 100)))
-            game_state = GameState(ball=ball_state)
-            agent.set_game_state(game_state)
 
 
 class flip():
@@ -274,12 +252,58 @@ class goto():
         velocity = 1 + agent.me.velocity.magnitude()
         if distance_remaining < 350:
             agent.pop()
-        elif abs(angles[1]) < 0.05 and velocity > 600 and velocity < 2150 and distance_remaining / velocity > 2.0:
+        elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and distance_remaining / velocity > 2.0:
             agent.push(flip(local_target))
-        elif abs(angles[1]) > 2.8 and velocity < 200:
-            agent.push(flip(local_target, True))
+        # TODO Halfflip
+        # elif abs(angles[1]) > 2.8 and velocity < 200:
+        #     agent.push(flip(local_target, True))
         elif agent.me.airborne:
             agent.push(recovery(self.target))
+
+
+class cheating():
+    # Drives towards a designated (stationary) target
+    # Optional vector controls where the car should be pointing upon reaching the target
+    # TODO - slow down if target is inside our turn radius
+    def __init__(self, vector=None, direction=1):
+        self.vector = vector
+        self.direction = direction
+
+    def run(self, agent):
+        car_to_target = agent.ball.location - agent.me.location
+        distance_remaining = car_to_target.flatten().magnitude()
+
+        agent.line(agent.ball.location - Vector3(0, 0, 500), agent.ball.location + Vector3(0, 0, 500), [255, 0, 255])
+
+        if self.vector != None:
+            # See commends for adjustment in jump_shot or aerial for explanation
+            side_of_vector = sign(self.vector.cross((0, 0, 1)).dot(car_to_target))
+            car_to_target_perp = car_to_target.cross((0, 0, side_of_vector)).normalize()
+            adjustment = car_to_target.angle(self.vector) * distance_remaining / 3.14
+            final_target = agent.ball.location + (car_to_target_perp * adjustment)
+        else:
+            final_target = agent.ball.location
+
+        # Some adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
+        if abs(agent.me.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+
+        local_target = agent.me.local(final_target - agent.me.location)
+
+        angles = defaultPD(agent, local_target, self.direction)
+        defaultThrottle(agent, 2300, self.direction)
+
+        agent.controller.boost = False
+        agent.controller.handbrake = True if abs(angles[1]) > 2.3 else agent.controller.handbrake
+
+        velocity = 1 + agent.me.velocity.magnitude()
+        if not agent.kickoff_flag:
+            agent.pop()
+            targets = {"goal" : (agent.foe_goal.left_post, agent.foe_goal.right_post)}
+            shots = find_hits(agent, targets)
+            if len(shots["goal"]) > 0:
+                agent.push(shots["goal"][0])
+        elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and distance_remaining / velocity > 2.0:
+            agent.push(flip(local_target))
 
 
 class goto_boost():

@@ -22,30 +22,30 @@ def cap(x, low, high):
     return x
 
 
-def defaultPD(agent, local_target, direction=1.0):
+def defaultPD(drone, local_target, direction=1.0):
     # points the car towards a given local target.
     # Direction can be changed to allow the car to steer towards a target while driving backwards
     local_target *= direction
-    up = agent.me.local(Vector3(0, 0, 1))  # where "up" is in local coordinates
+    up = drone.local(Vector3(0, 0, 1))  # where "up" is in local coordinates
     target_angles = [
         math.atan2(local_target[2], local_target[0]),  # angle required to pitch towards target
         math.atan2(local_target[1], local_target[0]),  # angle required to yaw towards target
         math.atan2(up[1], up[2])]  # angle required to roll upright
     # Once we have the angles we need to rotate, we feed them into PD loops to determing the controller inputs
-    agent.controller.steer = steerPD(target_angles[1], 0) * direction
-    agent.controller.pitch = steerPD(target_angles[0], agent.me.angular_velocity[1] / 4)
-    agent.controller.yaw = steerPD(target_angles[1], -agent.me.angular_velocity[2] / 4)
-    agent.controller.roll = steerPD(target_angles[2], agent.me.angular_velocity[0] / 2)
+    drone.controller.steer = steerPD(target_angles[1], 0) * direction
+    drone.controller.pitch = steerPD(target_angles[0], drone.angular_velocity[1] / 4)
+    drone.controller.yaw = steerPD(target_angles[1], -drone.angular_velocity[2] / 4)
+    drone.controller.roll = steerPD(target_angles[2], drone.angular_velocity[0] / 2)
     # Returns the angles, which can be useful for other purposes
     return target_angles
 
 
-def defaultThrottle(agent, target_speed, direction=1.0):
+def defaultThrottle(drone, target_speed, direction=1.0):
     # accelerates the car to a desired speed using throttle and boost
-    car_speed = agent.me.local(agent.me.velocity)[0]
+    car_speed = drone.local(drone.velocity)[0]
     t = (target_speed * direction) - car_speed
-    agent.controller.throttle = cap((t ** 2) * sign(t) / 1000, -1.0, 1.0)
-    agent.controller.boost = True if t > 150 and car_speed < 2275 and agent.controller.throttle == 1.0 else False
+    drone.controller.throttle = cap((t ** 2) * sign(t) / 1000, -1.0, 1.0)
+    drone.controller.boost = True if t > 150 and car_speed < 2275 and drone.controller.throttle == 1.0 else False
     return car_speed
 
 
@@ -153,3 +153,18 @@ def invlerp(a, b, v):
     # For instance, it returns 0 if v == a, and returns 1 if v == b, and returns 0.5 if v is exactly between a and b
     # Works for both numbers and Vector3s
     return (v - a) / (b - a)
+
+
+def closest_boost(agent, return_distance=False):
+    large_boosts = [boost for boost in agent.boosts if boost.large and boost.active]
+    closest = large_boosts[0]
+    closest_distance = (closest.location - agent.me.location).magnitude()
+    for boost in large_boosts:
+        boost_distance = (boost.location - agent.me.location).magnitude()
+        if boost_distance < closest_distance:
+            closest = boost
+            closest_distance = boost_distance
+    if return_distance:
+        return (closest, closest_distance)
+    else:
+        return closest
