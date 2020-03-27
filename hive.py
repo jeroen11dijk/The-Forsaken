@@ -1,11 +1,12 @@
-from typing import Dict, Union
+from typing import Dict
 
 from rlbot.agents.hivemind.drone_agent import DroneAgent
 from rlbot.agents.hivemind.python_hivemind import PythonHivemind
+from rlbot.utils.structures.bot_input_struct import PlayerInput
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 
 import routines
-from objects import *
+from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3
 
 
 # Dummy agent to call request MyHivemind.
@@ -19,49 +20,56 @@ class Drone(DroneAgent):
 
 class MyHivemind(PythonHivemind):
 
-    def initialize_hive(self, packet: GameTickPacket) -> None:
+    def __init__(self, agent_metadata_queue, quit_event, options):
+        super().__init__(agent_metadata_queue, quit_event, options)
         self.logger.info('Initialised!')
+        self.team: int = -1
 
+        # A list of cars for both teammates and opponents
+        self.friends: [CarObject] = []
+        self.foes: [CarObject] = []
+        # This holds the carobjects for our agent
+        self.drones: [CarObject] = []
+
+        self.ball: BallObject = BallObject()
+        self.game: GameObject = GameObject()
+        # A list of boosts
+        self.boosts: [BoostObject] = []
+        # goals
+        self.friend_goal: GoalObject = None
+        self.foe_goal: GoalObject = None
+        # Game time
+        self.time: float = 0.0
+        # Whether or not GoslingAgent has run its get_ready() function
+        self.ready: bool = False
+        # a flag that tells us when kickoff is happening
+        self.kickoff_flag: bool = False
+
+        self.last_time: float = 0
+        self.my_score: float = 0
+        self.foe_score: float = 0
+
+    def initialize_hive(self, packet: GameTickPacket) -> None:
         # Find out team by looking at packet.
         # drone_indices is a set, so you cannot just pick first element.
         index = next(iter(self.drone_indices))
         self.team = packet.game_cars[index].team
-
-        # A list of cars for both teammates and opponents
-        self.friends = []
-        self.foes = []
-        # This holds the carobjects for our agent
         self.drones = [CarObject(i) for i in self.drone_indices]
-
-        self.ball = ball_object()
-        self.game = game_object()
-        # A list of boosts
-        self.boosts = []
         # goals
-        self.friend_goal = goal_object(self.team)
-        self.foe_goal = goal_object(not self.team)
-        # Game time
-        self.time = 0.0
-        # Whether or not GoslingAgent has run its get_ready() function
-        self.ready = False
-        # a flag that tells us when kickoff is happening
-        self.kickoff_flag = False
+        self.friend_goal = GoalObject(self.team)
+        self.foe_goal = GoalObject(not self.team)
 
-        self.last_time = 0
-        self.my_score = 0
-        self.foe_score = 0
-
-    def get_ready(self, packet):
+    def get_ready(self, packet: GameTickPacket):
         # Preps all of the objects that will be updated during play
         field_info = self.get_field_info()
         for i in range(field_info.num_boosts):
             boost = field_info.boost_pads[i]
-            self.boosts.append(boost_object(i, boost.location, boost.is_full_boost))
+            self.boosts.append(BoostObject(i, boost.location, boost.is_full_boost))
         self.refresh_player_lists(packet)
         self.ball.update(packet)
         self.ready = True
 
-    def refresh_player_lists(self, packet):
+    def refresh_player_lists(self, packet: GameTickPacket):
         # makes new friend/foe lists
         # Useful to keep separate from get_ready because humans can join/leave a match
         drone_indices = [drone.index for drone in self.drones]
@@ -69,17 +77,22 @@ class MyHivemind(PythonHivemind):
                         packet.game_cars[i].team == self.team and i not in drone_indices]
         self.foes = [CarObject(i, packet) for i in range(packet.num_cars) if packet.game_cars[i].team != self.team]
 
-    def line(self, start, end, color=None):
-        color = color if color != None else [255, 255, 255]
+    def line(self, start: Vector3, end: Vector3, color=None):
+        color = color if color is not None else [255, 255, 255]
         self.renderer.draw_line_3d(start, end, self.renderer.create_color(255, *color))
 
-    def preprocess(self, packet):
+    def preprocess(self, packet: GameTickPacket):
         # Calling the update functions for all of the objects
-        if packet.num_cars != len(self.friends) + len(self.foes) + len(self.drones): self.refresh_player_lists(packet)
-        for car in self.friends: car.update(packet)
-        for car in self.foes: car.update(packet)
-        for pad in self.boosts: pad.update(packet)
-        for drone in self.drones: drone.update(packet)
+        if packet.num_cars != len(self.friends) + len(self.foes) + len(self.drones):
+            self.refresh_player_lists(packet)
+        for car in self.friends:
+            car.update(packet)
+        for car in self.foes:
+            car.update(packet)
+        for pad in self.boosts:
+            pad.update(packet)
+        for drone in self.drones:
+            drone.update(packet)
         self.ball.update(packet)
         self.game.update(packet)
         self.time = packet.game_info.seconds_elapsed
@@ -112,4 +125,4 @@ class MyHivemind(PythonHivemind):
     def run(self):
         for drone in self.drones:
             if len(drone.stack) < 1:
-                drone.push(routines.atba())
+                drone.push(routines.Atba())

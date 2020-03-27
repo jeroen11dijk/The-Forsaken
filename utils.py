@@ -1,13 +1,14 @@
 from __future__ import annotations
-
+import math
 from typing import TYPE_CHECKING
 from typing import Union
 
-from objects import *
+from objects import Vector3
 
 if TYPE_CHECKING:
     from hive import MyHivemind
-    from routines import aerial_shot, jump_shot
+    from objects import CarObject, BoostObject
+    from routines import AerialShot, JumpShot
 
 
 # This file is for small utilities for math and movement
@@ -142,7 +143,7 @@ def invlerp(a: float, b: float, v: float) -> float:
 
 
 def closest_boost(agent: MyHivemind, location: Vector3, return_distance=False) -> \
-        Union[boost_object, (boost_object, float)]:
+        Union[BoostObject, (BoostObject, float)]:
     large_boosts = [boost for boost in agent.boosts if boost.large and boost.active]
     closest = large_boosts[0]
     closest_distance = (closest.location - location).magnitude()
@@ -157,7 +158,7 @@ def closest_boost(agent: MyHivemind, location: Vector3, return_distance=False) -
         return closest
 
 
-def shot_valid(agent: MyHivemind, shot: Union[aerial_shot, jump_shot], threshold: float = 45) -> bool:
+def shot_valid(agent: MyHivemind, shot: Union[AerialShot, JumpShot], threshold: float = 45) -> bool:
     # Returns True if the ball is still where the shot anticipates it to be
     # First finds the two closest slices in the ball prediction to shot's intercept_time
     # threshold controls the tolerance we allow the ball to be off by

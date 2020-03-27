@@ -1,14 +1,31 @@
 from __future__ import annotations
 
-from utils import *
+import math
 from typing import TYPE_CHECKING
+
+from objects import Vector3
+from utils import cap, defaultPD, defaultThrottle, sign, backsolve, shot_valid, side
+
 if TYPE_CHECKING:
     from hive import MyHivemind
+    from objects import CarObject, BoostObject
+
 
 # This file holds all of the mechanical tasks, called "routines", that the bot can do
 
-class atba():
+class Routine:
+    def __init__(self):
+        pass
+
+    def run(self, drone: CarObject, agent: MyHivemind):
+        pass
+
+
+class Atba(Routine):
     # An example routine that just drives towards the ball at max speed
+    def __init__(self):
+        super().__init__()
+
     def run(self, drone: CarObject, agent: MyHivemind):
         relative_target = agent.ball.location - drone.location
         local_target = drone.local(relative_target)
@@ -16,10 +33,12 @@ class atba():
         defaultThrottle(drone, 2300)
 
 
-class aerial_shot():
+class AerialShot(Routine):
     # Very similar to jump_shot(), but instead designed to hit targets above 300uu
-    # ***This routine is a WIP*** It does not currently hit the ball very hard, nor does it like to be accurate above 600uu or so
-    def __init__(self, ball_location, intercept_time, shot_vector):
+    # ***This routine is a WIP*** It does not currently hit the ball very hard,
+    # nor does it like to be accurate above 600uu or so
+    def __init__(self, ball_location: Vector3, intercept_time: float, shot_vector: Vector3):
+        super().__init__()
         self.ball_location = ball_location
         self.intercept_time = intercept_time
         # The direction we intend to hit the ball in
@@ -30,7 +49,8 @@ class aerial_shot():
         self.jump_threshold = 600
         # what time we began our jump at
         self.jump_time = 0
-        # If we need a second jump we have to let go of the jump button for 3 frames, this counts how many frames we have let go for
+        # If we need a second jump we have to let go of the jump button for 3 frames,
+        # this counts how many frames we have let go for
         self.counter = 0
 
     def run(self, drone: CarObject, agent: MyHivemind):
@@ -59,8 +79,10 @@ class aerial_shot():
         # we don't adjust the final target if we are already jumping
         final_target = self.intercept + ((car_to_intercept_perp.normalize() * adjustment) if self.jump_time == 0 else 0)
 
-        # Some extra adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
-        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        # Some extra adjustment to the final target to ensure it's inside the field and
+        # we don't try to drive through any goalposts to reach it
+        if abs(drone.location[1] > 5150):
+            final_target[0] = cap(final_target[0], -750, 750)
 
         local_final_target = drone.local(final_target - drone.location)
 
@@ -76,7 +98,8 @@ class aerial_shot():
             drone.controller.boost = False if abs(angles[1]) > 0.3 or drone.airborne else drone.controller.boost
             drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
             if acceleration_required[2] > self.jump_threshold:
-                # Switch into the jump when the upward acceleration required reaches our threshold, hopefully we have aligned already...
+                # Switch into the jump when the upward acceleration required reaches our threshold,
+                # hopefully we have aligned already...
                 self.jump_time = agent.time
         else:
             time_since_jump = agent.time - self.jump_time
@@ -103,11 +126,12 @@ class aerial_shot():
 
         if raw_time_remaining < -0.25 or not shot_valid(agent, self):
             drone.pop()
-            drone.push(recovery())
+            drone.push(Recovery())
 
 
-class wait():
-    def __init__(self, duration=0.1):
+class Wait(Routine):
+    def __init__(self, duration: float = 0.1):
+        super().__init__()
         self.duration = duration
         self.time = -1
 
@@ -119,12 +143,13 @@ class wait():
             elapsed = agent.time - self.time
         if elapsed >= self.duration:
             drone.pop()
-            drone.push(flip(drone.local(agent.ball.location - drone.location)))
+            drone.push(Flip(drone.local(agent.ball.location - drone.location)))
 
 
-class flip():
+class Flip(Routine):
     # Flip takes a vector in local coordinates and flips/dodges in that direction
-    def __init__(self, vector, duration=0.1, delay=0.1):
+    def __init__(self, vector: Vector3, duration: float = 0.1, delay: float = 0.1):
+        super().__init__()
         self.vector = vector.normalize()
         self.pitch = abs(self.vector[0]) * -sign(self.vector[0])
         self.yaw = abs(self.vector[1]) * sign(self.vector[1])
@@ -163,12 +188,14 @@ class flip():
             drone.controller.roll = 0
         else:
             drone.pop()
-            drone.push(recovery(self.vector, target_local=True))
+            drone.push(Recovery(self.vector, target_local=True))
 
 
-class speedflip():
+class SpeedFlip(Routine):
     # Flip takes a vector in local coordinates and flips/dodges in that direction
-    def __init__(self, vector, duration=0.1, delay=0.1, angle=0, boost=False):
+    def __init__(self, vector: Vector3, duration: float = 0.1, delay: float = 0.1, angle: float = 0,
+                 boost: bool = False):
+        super().__init__()
         self.vector = vector.normalize()
         self.pitch = abs(self.vector[0]) * -sign(self.vector[0])
         self.yaw = abs(self.vector[1]) * sign(self.vector[1])
@@ -213,14 +240,15 @@ class speedflip():
             defaultPD(drone, self.vector)
         else:
             drone.pop()
-            drone.push(recovery(boost=self.boost, time=agent.time))
+            drone.push(Recovery(boost=self.boost, time=agent.time))
 
 
-class goto():
+class Goto(Routine):
     # Drives towards a designated (stationary) target
     # Optional vector controls where the car should be pointing upon reaching the target
     # TODO - slow down if target is inside our turn radius
-    def __init__(self, target, vector=None, direction=1):
+    def __init__(self, target: Vector3, vector: Vector3 = None, direction: float = 1):
+        super().__init__()
         self.target = target
         self.vector = vector
         self.direction = direction
@@ -231,7 +259,7 @@ class goto():
 
         agent.line(self.target - Vector3(0, 0, 500), self.target + Vector3(0, 0, 500), [255, 0, 255])
 
-        if self.vector != None:
+        if self.vector is not None:
             # See commends for adjustment in jump_shot or aerial for explanation
             side_of_vector = sign(self.vector.cross((0, 0, 1)).dot(car_to_target))
             car_to_target_perp = car_to_target.cross((0, 0, side_of_vector)).normalize()
@@ -240,8 +268,10 @@ class goto():
         else:
             final_target = self.target
 
-        # Some adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
-        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        # Some adjustment to the final target to ensure it's inside the field and
+        # we don't try to drive through any goalposts to reach it
+        if abs(drone.location[1] > 5150):
+            final_target[0] = cap(final_target[0], -750, 750)
 
         local_target = drone.local(final_target - drone.location)
 
@@ -255,18 +285,19 @@ class goto():
         if distance_remaining < 350:
             drone.pop()
         elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and distance_remaining / velocity > 2.0:
-            drone.push(flip(local_target))
+            drone.push(Flip(local_target))
         # TODO Halfflip
         # elif abs(angles[1]) > 2.8 and velocity < 200:
         #     agent.push(flip(local_target, True))
         elif drone.airborne:
-            drone.push(recovery(self.target))
+            drone.push(Recovery(self.target))
 
 
-class goto_boost():
+class GotoBoost(Routine):
     # very similar to goto() but designed for grabbing boost
     # if a target is provided the bot will try to be facing the target as it passes over the boost
-    def __init__(self, boost, target=None):
+    def __init__(self, boost: BoostObject, target: Vector3 = None):
+        super().__init__()
         self.boost = boost
         self.target = target
 
@@ -276,7 +307,7 @@ class goto_boost():
 
         agent.line(self.boost.location - Vector3(0, 0, 500), self.boost.location + Vector3(0, 0, 500), [0, 255, 0])
 
-        if self.target != None:
+        if self.target is not None:
             vector = (self.target - self.boost.location).normalize()
             side_of_vector = sign(vector.cross((0, 0, 1)).dot(car_to_boost))
             car_to_boost_perp = car_to_boost.cross((0, 0, side_of_vector)).normalize()
@@ -288,8 +319,10 @@ class goto_boost():
             car_to_target = 0
             final_target = self.boost.location
 
-        # Some adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
-        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        # Some adjustment to the final target to ensure it's inside the field and
+        # we don't try to dirve through any goalposts to reach it
+        if abs(drone.location[1] > 5150):
+            final_target[0] = cap(final_target[0], -750, 750)
 
         local_target = drone.local(final_target - drone.location)
 
@@ -303,17 +336,19 @@ class goto_boost():
         if not self.boost.active or drone.boost >= 99.0 or distance_remaining < 350:
             drone.pop()
         elif drone.airborne:
-            drone.push(recovery(self.target))
+            drone.push(Recovery(self.target))
         elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and (
                 distance_remaining / velocity > 2.0 or (adjustment < 90 and car_to_target / velocity > 2.0)):
-            drone.push(flip(local_target))
+            drone.push(Flip(local_target))
 
 
-class jump_shot():
+class JumpShot(Routine):
     # Hits a target point at a target time towards a target direction
     # Target must be no higher than 300uu unless you're feeling lucky
     # TODO - speed
-    def __init__(self, ball_location, intercept_time, shot_vector, ratio, direction=1, speed=2300):
+    def __init__(self, ball_location: Vector3, intercept_time: float, shot_vector: Vector3, ratio: float,
+                 direction: float = 1, speed: float = 2300):
+        super().__init__()
         self.ball_location = ball_location
         self.intercept_time = intercept_time
         # The direction we intend to hit the ball in
@@ -335,6 +370,8 @@ class jump_shot():
         self.jumping = False
         self.dodging = False
         self.counter = 0
+        self.p = 0
+        self.y = 0
 
     def run(self, drone: CarObject, agent: MyHivemind):
         raw_time_remaining = self.intercept_time - agent.time
@@ -360,10 +397,13 @@ class jump_shot():
         # we don't adjust the final target if we are already jumping
         final_target = self.dodge_point + (
             (car_to_dodge_perp.normalize() * adjustment) if not self.jumping else 0) + Vector3(0, 0, 50)
-        # Ensuring our target isn't too close to the sides of the field, where our car would get messed up by the radius of the curves
+        # Ensuring our target isn't too close to the sides of the field,
+        # where our car would get messed up by the radius of the curves
 
-        # Some adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
-        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        # Some adjustment to the final target to ensure it's inside the field and
+        # we don't try to dirve through any goalposts to reach it
+        if abs(drone.location[1] > 5150):
+            final_target[0] = cap(final_target[0], -750, 750)
 
         local_final_target = drone.local(final_target - drone.location)
 
@@ -388,16 +428,17 @@ class jump_shot():
                 # If we're out of time or not fast enough to be within 45 units of target at the intercept time, we pop
                 drone.pop()
                 if drone.airborne:
-                    drone.push(recovery())
-            elif local_acceleration_required[2] > self.jump_threshold and local_acceleration_required[
-                2] > local_acceleration_required.flatten().magnitude():
-                # Switch into the jump when the upward acceleration required reaches our threshold, and our lateral acceleration is negligible
+                    drone.push(Recovery())
+            elif local_acceleration_required[2] > self.jump_threshold \
+                    and local_acceleration_required[2] > local_acceleration_required.flatten().magnitude():
+                # Switch into the jump when the upward acceleration required reaches our threshold,
+                # and our lateral acceleration is negligible
                 self.jumping = True
         else:
             if (raw_time_remaining > 0.2 and not shot_valid(agent, self, 150)) or raw_time_remaining <= -0.9 or (
                     not drone.airborne and self.counter > 0):
                 drone.pop()
-                drone.push(recovery())
+                drone.push(Recovery())
             elif self.counter == 0 and local_acceleration_required[2] > 0.0 and raw_time_remaining > 0.083:
                 # Initial jump to get airborne + we hold the jump button for extra power as required
                 drone.controller.jump = True
@@ -418,7 +459,10 @@ class jump_shot():
                 drone.controller.yaw = self.y if abs(self.y) > 0.3 else 0
 
 
-class center_kickoff():
+class CenterKickoff(Routine):
+    def __init__(self):
+        super().__init__()
+
     def run(self, drone: CarObject, agent: MyHivemind):
         target = Vector3(0, 3800 * side(agent.team), 0)
         local_target = drone.local(target - drone.location)
@@ -426,11 +470,14 @@ class center_kickoff():
         defaultThrottle(drone, 2300)
         if local_target.magnitude() < 100:
             drone.pop()
-            drone.push(diagonal_kickoff())
-            drone.push(flip(Vector3(1, 0, 0)))
+            drone.push(DiagonalKickoff())
+            drone.push(Flip(Vector3(1, 0, 0)))
 
 
-class offcenter_kickoff():
+class OffCenterKickoff(Routine):
+    def __init__(self):
+        super().__init__()
+
     def run(self, drone: CarObject, agent: MyHivemind):
         target = Vector3(0, 3116 * side(agent.team), 0)
         local_target = drone.local(target - drone.location)
@@ -438,11 +485,14 @@ class offcenter_kickoff():
         defaultThrottle(drone, 2300)
         if local_target.magnitude() < 400:
             drone.pop()
-            drone.push(diagonal_kickoff())
-            drone.push(flip(drone.local(agent.ball.location - drone.location)))
+            drone.push(DiagonalKickoff())
+            drone.push(Flip(drone.local(agent.ball.location - drone.location)))
 
 
-class diagonal_kickoff():
+class DiagonalKickoff(Routine):
+    def __init__(self):
+        super().__init__()
+
     def run(self, drone: CarObject, agent: MyHivemind):
         target = agent.ball.location + Vector3(0, 200 * side(agent.team), 0)
         local_target = drone.local(target - drone.location)
@@ -450,20 +500,21 @@ class diagonal_kickoff():
         defaultThrottle(drone, 2300)
         if local_target.magnitude() < 650:
             drone.pop()
-            drone.push(flip(drone.local(agent.foe_goal.location - drone.location)))
+            drone.push(Flip(drone.local(agent.foe_goal.location - drone.location)))
 
 
-class recovery():
+class Recovery(Routine):
     # Point towards our velocity vector and land upright, unless we aren't moving very fast
     # A vector can be provided to control where the car points when it lands
-    def __init__(self, target=None, target_local=False, boost=False, time=0):
+    def __init__(self, target: Vector3 = None, target_local: bool = False, boost: bool = False, time: float = 0):
+        super().__init__()
         self.target = target
         self.target_local = target_local
         self.boost = boost
         self.start_time = time
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        if self.target != None:
+        if self.target is not None:
             if self.target_local:
                 local_target = self.target
             else:
@@ -486,10 +537,11 @@ class recovery():
             drone.pop()
 
 
-class short_shot():
+class ShortShot(Routine):
     # This routine drives towards the ball and attempts to hit it towards a given target
     # It does not require ball prediction and kinda guesses at where the ball will be on its own
-    def __init__(self, target):
+    def __init__(self, target: Vector3):
+        super().__init__()
         self.target = target
 
     def run(self, drone: CarObject, agent: MyHivemind):
@@ -508,8 +560,9 @@ class short_shot():
         target_vector = -ball_to_target.clamp(left_vector, right_vector)
         final_target = agent.ball.location + (target_vector * (distance / 2))
 
-        # Some adjustment to the final target to ensure we don't try to dirve through any goalposts to reach it
-        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        # Some adjustment to the final target to ensure we don't try to drive through any goalposts to reach it
+        if abs(drone.location[1] > 5150):
+            final_target[0] = cap(final_target[0], -750, 750)
 
         agent.line(final_target - Vector3(0, 0, 100), final_target + Vector3(0, 0, 100), [255, 255, 255])
 
@@ -520,4 +573,4 @@ class short_shot():
 
         if abs(angles[1]) < 0.05 and (eta < 0.45 or distance < 150):
             drone.pop()
-            drone.push(flip(drone.local(car_to_ball)))
+            drone.push(Flip(drone.local(car_to_ball)))

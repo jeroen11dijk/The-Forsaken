@@ -1,13 +1,20 @@
+from __future__ import annotations
+
 import math
+from typing import TYPE_CHECKING, Union
 
 import rlbot.utils.structures.game_data_struct as game_data_struct
 from rlbot.utils.structures.bot_input_struct import PlayerInput
+
+if TYPE_CHECKING:
+    from rlbot.utils.structures.game_data_struct import GameTickPacket
+    from routines import Routine
 
 
 class CarObject:
     # The carObject, and kin, convert the gametickpacket in something a little friendlier to use,
     # and are updated by GoslingAgent as the game runs
-    def __init__(self, index, packet=None):
+    def __init__(self, index: int, packet: GameTickPacket = None):
         self.location: Vector3 = Vector3(0, 0, 0)
         self.orientation: Matrix3 = Matrix3(0, 0, 0)
         self.velocity: Vector3 = Vector3(0, 0, 0)
@@ -17,21 +24,21 @@ class CarObject:
         self.supersonic: bool = False
         self.jumped: bool = False
         self.doublejumped: bool = False
-        self.team: float = 0
-        self.boost:float = 0
-        self.index:float = index
+        self.team: int = 0
+        self.boost: float = 0
+        self.index: int = index
         self.controller: PlayerInput = PlayerInput()
         # A list that acts as the routines stack
         self.stack: [] = []
-        if packet != None:
+        if packet is not None:
             self.team = packet.game_cars[self.index].team
             self.update(packet)
 
-    def local(self, value):
+    def local(self, value: Vector3) -> Vector3:
         # Shorthand for self.orientation.dot(value)
         return self.orientation.dot(value)
 
-    def update(self, packet):
+    def update(self, packet: GameTickPacket):
         car = packet.game_cars[self.index]
         self.location.data = [car.physics.location.x, car.physics.location.y, car.physics.location.z]
         self.velocity.data = [car.physics.velocity.x, car.physics.velocity.y, car.physics.velocity.z]
@@ -48,21 +55,21 @@ class CarObject:
         self.controller.__init__()
 
     @property
-    def forward(self):
+    def forward(self) -> Vector3:
         # A vector pointing forwards relative to the cars orientation. Its magnitude is 1
         return self.orientation.forward
 
     @property
-    def left(self):
+    def left(self) -> Vector3:
         # A vector pointing left relative to the cars orientation. Its magnitude is 1
         return self.orientation.left
 
     @property
-    def up(self):
+    def up(self) -> Vector3:
         # A vector pointing up relative to the cars orientation. Its magnitude is 1
         return self.orientation.up
 
-    def push(self, routine):
+    def push(self, routine: Routine):
         # Shorthand for adding a routine to the stack
         self.stack.append(routine)
 
@@ -74,21 +81,15 @@ class CarObject:
         # Shorthand for clearing the stack of all routines
         self.stack = []
 
-    def debug_stack(self):
-        # Draws the stack on the screen
-        white = self.renderer.white()
-        for i in range(len(self.stack) - 1, -1, -1):
-            text = self.stack[i].__class__.__name__
-            self.renderer.draw_string_2d(10, 50 + (50 * (len(self.stack) - i)), 3, 3, text, white)
 
-class ball_object:
+class BallObject:
     def __init__(self):
-        self.location = Vector3(0, 0, 0)
-        self.velocity = Vector3(0, 0, 0)
-        self.latest_touched_time = 0
-        self.latest_touched_team = 0
+        self.location: Vector3 = Vector3(0, 0, 0)
+        self.velocity: Vector3 = Vector3(0, 0, 0)
+        self.latest_touched_time: float = 0
+        self.latest_touched_team: float = 0
 
-    def update(self, packet):
+    def update(self, packet: GameTickPacket):
         ball = packet.game_ball
         self.location.data = [ball.physics.location.x, ball.physics.location.y, ball.physics.location.z]
         self.velocity.data = [ball.physics.velocity.x, ball.physics.velocity.y, ball.physics.velocity.z]
@@ -96,38 +97,38 @@ class ball_object:
         self.latest_touched_team = ball.latest_touch.team
 
 
-class boost_object:
+class BoostObject:
     def __init__(self, index, location, large):
-        self.index = index
-        self.location = Vector3(location.x, location.y, location.z)
-        self.active = True
-        self.large = large
+        self.index: int = index
+        self.location: Vector3 = Vector3(location.x, location.y, location.z)
+        self.active: bool = True
+        self.large: bool = large
 
-    def update(self, packet):
+    def update(self, packet: GameTickPacket):
         self.active = packet.game_boosts[self.index].is_active
 
 
-class goal_object:
+class GoalObject:
     # This is a simple object that creates/holds goalpost locations for a given team (for soccer on standard maps only)
-    def __init__(self, team):
+    def __init__(self, team: int):
         team = 1 if team == 1 else -1
-        self.location = Vector3(0, team * 5100, 320)  # center of goal line
+        self.location: Vector3 = Vector3(0, team * 5100, 320)  # center of goal line
         # Posts are closer to x=750, but this allows the bot to be a little more accurate
-        self.left_post = Vector3(team * 850, team * 5100, 320)
-        self.right_post = Vector3(-team * 850, team * 5100, 320)
+        self.left_post: Vector3 = Vector3(team * 850, team * 5100, 320)
+        self.right_post: Vector3 = Vector3(-team * 850, team * 5100, 320)
 
 
-class game_object:
+class GameObject:
     # This object holds information about the current match
     def __init__(self):
-        self.time = 0
-        self.time_remaining = 0
-        self.overtime = False
-        self.round_active = False
-        self.kickoff = False
-        self.match_ended = False
+        self.time: float = 0
+        self.time_remaining: float = 0
+        self.overtime: bool = False
+        self.round_active: bool = False
+        self.kickoff: bool = False
+        self.match_ended: bool = False
 
-    def update(self, packet):
+    def update(self, packet: GameTickPacket):
         game = packet.game_info
         self.time = game.seconds_elapsed
         self.time_remaining = game.game_time_remaining
@@ -147,28 +148,32 @@ class Matrix3:
     # you can convert that to local coordinates by dotting it with this matrix
     # ie: local_ball_location = Matrix3.dot(ball.location - car.location)
     def __init__(self, pitch, yaw, roll):
-        CP = math.cos(pitch)
-        SP = math.sin(pitch)
-        CY = math.cos(yaw)
-        SY = math.sin(yaw)
-        CR = math.cos(roll)
-        SR = math.sin(roll)
-        # List of 3 vectors, each descriping the direction of an axis: Forward, Left, and Up
-        self.data = [
-            Vector3(CP * CY, CP * SY, SP),
-            Vector3(CY * SP * SR - CR * SY, SY * SP * SR + CR * CY, -CP * SR),
-            Vector3(-CR * CY * SP - SR * SY, -CR * SY * SP + SR * CY, CP * CR)]
+        cp = math.cos(pitch)
+        sp = math.sin(pitch)
+        cy = math.cos(yaw)
+        sy = math.sin(yaw)
+        cr = math.cos(roll)
+        sr = math.sin(roll)
+        # List of 3 vectors, each describing the direction of an axis: Forward, Left, and Up
+        self.data: [Vector3] = [
+            Vector3(cp * cy, cp * sy, sp),
+            Vector3(cy * sp * sr - cr * sy, sy * sp * sr + cr * cy, -cp * sr),
+            Vector3(-cr * cy * sp - sr * sy, -cr * sy * sp + sr * cy, cp * cr)]
+        self.forward: Vector3
+        self.left: Vector3
+        self.up: Vector3
         self.forward, self.left, self.up = self.data
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: int) -> Vector3:
         return self.data[key]
 
-    def dot(self, vector):
+    def dot(self, vector: Vector3) -> Vector3:
         return Vector3(self.forward.dot(vector), self.left.dot(vector), self.up.dot(vector))
 
 
 class Vector3:
-    # This is the backbone of Gosling Utils. The Vector3 makes it easy to store positions, velocities, etc and perform vector math
+    # This is the backbone of Gosling Utils. The Vector3 makes it easy to store positions,
+    # velocities, etc and perform vector math
     # A Vector3 can be created with:
     # - Anything that has a __getitem__ (lists, tuples, Vector3's, etc)
     # - 3 numbers
@@ -187,45 +192,45 @@ class Vector3:
 
     # Property functions allow you to use `Vector3.x` vs `Vector3[0]`
     @property
-    def x(self):
+    def x(self) -> float:
         return self.data[0]
 
     @x.setter
-    def x(self, value):
+    def x(self, value: float):
         self.data[0] = value
 
     @property
-    def y(self):
+    def y(self) -> float:
         return self.data[1]
 
     @y.setter
-    def y(self, value):
+    def y(self, value: float):
         self.data[1] = value
 
     @property
-    def z(self):
+    def z(self) -> float:
         return self.data[2]
 
     @z.setter
-    def z(self, value):
+    def z(self, value: float):
         self.data[2] = value
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: int) -> float:
         # To access a single value in a Vector3, treat it like a list
         # ie: to get the first (x) value use: Vector3[0]
         # The same works for setting values
         return self.data[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: int, value: float):
         self.data[key] = value
 
-    def __str__(self):
+    def __str__(self) -> str:
         # Vector3's can be printed to console
         return str(self.data)
 
     __repr__ = __str__
 
-    def __eq__(self, value):
+    def __eq__(self, value: object) -> bool:
         # Vector3's can be compared with:
         # - Another Vector3, in which case True will be returned if they have the same values
         # - A list, in which case True will be returned if they have the same values
@@ -242,14 +247,14 @@ class Vector3:
     # ie x+x, y+y, z+z
     # If using an operator with only a value, each dimension will be affected by that value
     # ie x+v, y+v, z+v
-    def __add__(self, value):
+    def __add__(self, value: Union[Vector3, float]) -> Vector3:
         if isinstance(value, Vector3):
             return Vector3(self[0] + value[0], self[1] + value[1], self[2] + value[2])
         return Vector3(self[0] + value, self[1] + value, self[2] + value)
 
     __radd__ = __add__
 
-    def __sub__(self, value):
+    def __sub__(self, value: Union[Vector3, float]) -> Vector3:
         if isinstance(value, Vector3):
             return Vector3(self[0] - value[0], self[1] - value[1], self[2] - value[2])
         return Vector3(self[0] - value, self[1] - value, self[2] - value)
@@ -259,28 +264,28 @@ class Vector3:
     def __neg__(self):
         return Vector3(-self[0], -self[1], -self[2])
 
-    def __mul__(self, value):
+    def __mul__(self, value: Union[Vector3, float]) -> Vector3:
         if isinstance(value, Vector3):
             return Vector3(self[0] * value[0], self[1] * value[1], self[2] * value[2])
         return Vector3(self[0] * value, self[1] * value, self[2] * value)
 
     __rmul__ = __mul__
 
-    def __truediv__(self, value):
+    def __truediv__(self, value: Union[Vector3, float]) -> Vector3:
         if isinstance(value, Vector3):
             return Vector3(self[0] / value[0], self[1] / value[1], self[2] / value[2])
         return Vector3(self[0] / value, self[1] / value, self[2] / value)
 
-    def __rtruediv__(self, value):
+    def __rtruediv__(self, value: Vector3) -> Vector3:
         if isinstance(value, Vector3):
             return Vector3(value[0] / self[0], value[1] / self[1], value[2] / self[2])
         raise TypeError("unsupported rtruediv operands")
 
-    def magnitude(self):
+    def magnitude(self) -> float:
         # Magnitude() returns the length of the vector
         return math.sqrt((self[0] * self[0]) + (self[1] * self[1]) + (self[2] * self[2]))
 
-    def normalize(self, return_magnitude=False):
+    def normalize(self, return_magnitude: bool = False) -> Union[Vector3, (Vector3, float)]:
         # Normalize() returns a Vector3 that shares the same direction but has a length of 1.0
         # Normalize(True) can also be used if you'd like the length of this Vector3 (used for optimization)
         magnitude = self.magnitude()
@@ -293,30 +298,30 @@ class Vector3:
         return Vector3(0, 0, 0)
 
     # Linear algebra functions
-    def dot(self, value):
+    def dot(self, value: Vector3) -> float:
         return self[0] * value[0] + self[1] * value[1] + self[2] * value[2]
 
-    def cross(self, value):
+    def cross(self, value: Vector3) -> Vector3:
         return Vector3((self[1] * value[2]) - (self[2] * value[1]), (self[2] * value[0]) - (self[0] * value[2]),
                        (self[0] * value[1]) - (self[1] * value[0]))
 
-    def flatten(self):
+    def flatten(self) -> Vector3:
         # Sets Z (Vector3[2]) to 0
         return Vector3(self[0], self[1], 0)
 
-    def render(self):
+    def render(self) -> []:
         # Returns a list with the x and y values, to be used with pygame
         return [self[0], self[1]]
 
-    def copy(self):
+    def copy(self) -> Vector3:
         # Returns a copy of this Vector3
         return Vector3(self.data[:])
 
-    def angle(self, value):
+    def angle(self, value: Vector3) -> float:
         # Returns the angle between this Vector3 and another Vector3
         return math.acos(round(self.flatten().normalize().dot(value.flatten().normalize()), 4))
 
-    def rotate(self, angle):
+    def rotate(self, angle: float) -> Vector3:
         # Rotates this Vector3 by the given angle in radians
         # Note that this is only 2D, in the x and y axis
         return Vector3((math.cos(angle) * self[0]) - (math.sin(angle) * self[1]),

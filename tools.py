@@ -1,5 +1,15 @@
+from __future__ import annotations
+
+import math
+from typing import TYPE_CHECKING
+
 from objects import Vector3
-from utils import *
+from utils import cap, in_field, post_correction, find_slope
+
+if TYPE_CHECKING:
+    from hive import MyHivemind
+    from objects import CarObject
+    from routines import AerialShot, JumpShot
 
 
 # This file is for strategic tools
@@ -75,11 +85,11 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
                             slope = find_slope(best_shot_vector, car_to_ball)
                             if forward_flag:
                                 if ball_location[2] <= 300 and slope > 0.0:
-                                    hits[pair].append(jump_shot(ball_location, intercept_time, best_shot_vector, slope))
+                                    hits[pair].append(JumpShot(ball_location, intercept_time, best_shot_vector, slope))
                                 if 300 < ball_location[2] < 600 and slope > 1.0 and (
                                         ball_location[2] - 250) * 0.14 > drone.boost:
                                     hits[pair].append(
-                                        aerial_shot(ball_location, intercept_time, best_shot_vector))
+                                        AerialShot(ball_location, intercept_time, best_shot_vector))
                             elif backward_flag and ball_location[2] <= 280 and slope > 0.25:
-                                hits[pair].append(jump_shot(ball_location, intercept_time, best_shot_vector, slope, -1))
+                                hits[pair].append(JumpShot(ball_location, intercept_time, best_shot_vector, slope, -1))
     return hits
