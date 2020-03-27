@@ -1,10 +1,19 @@
-import math
-from objects import Vector3
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+from typing import Union
+
+from objects import *
+
+if TYPE_CHECKING:
+    from hive import MyHivemind
+    from routines import aerial_shot, jump_shot
 
 
 # This file is for small utilities for math and movement
 
-def backsolve(target, car, time, gravity=650):
+
+def backsolve(target: Vector3, car: CarObject, time: float, gravity: int = 650) -> Vector3:
     # Finds the acceleration required for a car to reach a target in a specific amount of time
     d = target - car.location
     dvx = ((d[0] / time) - car.velocity[0]) / time
@@ -13,7 +22,7 @@ def backsolve(target, car, time, gravity=650):
     return Vector3(dvx, dvy, dvz)
 
 
-def cap(x, low, high):
+def cap(x: float, low: float, high: float) -> float:
     # caps/clamps a number between a low and high value
     if x < low:
         return low
@@ -22,7 +31,7 @@ def cap(x, low, high):
     return x
 
 
-def defaultPD(drone, local_target, direction=1.0):
+def defaultPD(drone: CarObject, local_target: Vector3, direction: float = 1.0) -> []:
     # points the car towards a given local target.
     # Direction can be changed to allow the car to steer towards a target while driving backwards
     local_target *= direction
@@ -40,7 +49,7 @@ def defaultPD(drone, local_target, direction=1.0):
     return target_angles
 
 
-def defaultThrottle(drone, target_speed, direction=1.0):
+def defaultThrottle(drone: CarObject, target_speed: int, direction: float = 1.0) -> Vector3:
     # accelerates the car to a desired speed using throttle and boost
     car_speed = drone.local(drone.velocity)[0]
     t = (target_speed * direction) - car_speed
@@ -49,7 +58,7 @@ def defaultThrottle(drone, target_speed, direction=1.0):
     return car_speed
 
 
-def in_field(point, radius):
+def in_field(point: Vector3, radius: float) -> bool:
     # determines if a point is inside the standard soccer field
     point = Vector3(abs(point[0]), abs(point[1]), abs(point[2]))
     if point[0] > 4080 - radius:
@@ -63,7 +72,7 @@ def in_field(point, radius):
     return True
 
 
-def find_slope(shot_vector, car_to_target):
+def find_slope(shot_vector: Vector3, car_to_target: Vector3) -> float:
     # Finds the slope of your car's position relative to the shot vector (shot vector is y axis)
     # 10 = you are on the axis and the ball is between you and the direction to shoot in
     # -10 = you are on the wrong side
@@ -73,7 +82,7 @@ def find_slope(shot_vector, car_to_target):
     return cap(d / e if e != 0 else 10 * sign(d), -3.0, 3.0)
 
 
-def post_correction(ball_location, left_target, right_target):
+def post_correction(ball_location: Vector3, left_target: Vector3, right_target: Vector3) -> (Vector3, Vector3, bool):
     # this function returns target locations that are corrected to account for the ball's radius
     # If the left and right post swap sides, a goal cannot be scored
     ball_radius = 120  # We purposly make this a bit larger so that our shots have a higher chance of success
@@ -87,7 +96,7 @@ def post_correction(ball_location, left_target, right_target):
     return left, right, swapped
 
 
-def quadratic(a, b, c):
+def quadratic(a: float, b: float, c: float) -> (float, float):
     # Returns the two roots of a quadratic
     inside = math.sqrt((b * b) - (4 * a * c))
     if a != 0:
@@ -96,7 +105,59 @@ def quadratic(a, b, c):
         return -1, -1
 
 
-def shot_valid(agent, shot, threshold=45):
+def side(x: float) -> float:
+    # returns -1 for blue team and 1 for orange team
+    if x == 0:
+        return -1
+    return 1
+
+
+def sign(x: float) -> float:
+    # returns the sign of a number, -1, 0, +1
+    if x < 0.0:
+        return -1
+    elif x > 0.0:
+        return 1
+    else:
+        return 0.0
+
+
+def steerPD(angle: float, rate: float) -> float:
+    # A Proportional-Derivative control loop used for defaultPD
+    return cap(((35 * (angle + rate)) ** 3) / 10, -1.0, 1.0)
+
+
+def lerp(a: float, b: float, t: float) -> float:
+    # Linearly interpolate from a to b using t
+    # For instance, when t == 0, a is returned, and when t == 1, b is returned
+    # Works for both numbers and Vector3s
+    return (b - a) * t + a
+
+
+def invlerp(a: float, b: float, v: float) -> float:
+    # Inverse linear interpolation from a to b with value v
+    # For instance, it returns 0 if v == a, and returns 1 if v == b, and returns 0.5 if v is exactly between a and b
+    # Works for both numbers and Vector3s
+    return (v - a) / (b - a)
+
+
+def closest_boost(agent: MyHivemind, location: Vector3, return_distance=False) -> \
+        Union[boost_object, (boost_object, float)]:
+    large_boosts = [boost for boost in agent.boosts if boost.large and boost.active]
+    closest = large_boosts[0]
+    closest_distance = (closest.location - location).magnitude()
+    for boost in large_boosts:
+        boost_distance = (boost.location - location).magnitude()
+        if boost_distance < closest_distance:
+            closest = boost
+            closest_distance = boost_distance
+    if return_distance:
+        return closest, closest_distance
+    else:
+        return closest
+
+
+def shot_valid(agent: MyHivemind, shot: Union[aerial_shot, jump_shot], threshold: float = 45) -> bool:
     # Returns True if the ball is still where the shot anticipates it to be
     # First finds the two closest slices in the ball prediction to shot's intercept_time
     # threshold controls the tolerance we allow the ball to be off by
@@ -117,54 +178,3 @@ def shot_valid(agent, shot, threshold=45):
     predicted_ball_location = Vector3(slices[soonest].physics.location) + (slopes * time_from_soonest)
     # Comparing predicted location with where the shot expects the ball to be
     return (shot.ball_location - predicted_ball_location).magnitude() < threshold
-
-
-def side(x):
-    # returns -1 for blue team and 1 for orange team
-    if x == 0:
-        return -1
-    return 1
-
-
-def sign(x):
-    # returns the sign of a number, -1, 0, +1
-    if x < 0.0:
-        return -1
-    elif x > 0.0:
-        return 1
-    else:
-        return 0.0
-
-
-def steerPD(angle, rate):
-    # A Proportional-Derivative control loop used for defaultPD
-    return cap(((35 * (angle + rate)) ** 3) / 10, -1.0, 1.0)
-
-
-def lerp(a, b, t):
-    # Linearly interpolate from a to b using t
-    # For instance, when t == 0, a is returned, and when t == 1, b is returned
-    # Works for both numbers and Vector3s
-    return (b - a) * t + a
-
-
-def invlerp(a, b, v):
-    # Inverse linear interpolation from a to b with value v
-    # For instance, it returns 0 if v == a, and returns 1 if v == b, and returns 0.5 if v is exactly between a and b
-    # Works for both numbers and Vector3s
-    return (v - a) / (b - a)
-
-
-def closest_boost(agent, return_distance=False):
-    large_boosts = [boost for boost in agent.boosts if boost.large and boost.active]
-    closest = large_boosts[0]
-    closest_distance = (closest.location - agent.me.location).magnitude()
-    for boost in large_boosts:
-        boost_distance = (boost.location - agent.me.location).magnitude()
-        if boost_distance < closest_distance:
-            closest = boost
-            closest_distance = boost_distance
-    if return_distance:
-        return (closest, closest_distance)
-    else:
-        return closest

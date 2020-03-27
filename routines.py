@@ -1,13 +1,16 @@
-from tools import find_hits
-from utils import *
+from __future__ import annotations
 
+from utils import *
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from hive import MyHivemind
 
 # This file holds all of the mechanical tasks, called "routines", that the bot can do
 
 class atba():
     # An example routine that just drives towards the ball at max speed
-    def run(self, drone, ball_location):
-        relative_target = ball_location - drone.location
+    def run(self, drone: CarObject, agent: MyHivemind):
+        relative_target = agent.ball.location - drone.location
         local_target = drone.local(relative_target)
         defaultPD(drone, local_target)
         defaultThrottle(drone, 2300)
@@ -16,7 +19,7 @@ class atba():
 class aerial_shot():
     # Very similar to jump_shot(), but instead designed to hit targets above 300uu
     # ***This routine is a WIP*** It does not currently hit the ball very hard, nor does it like to be accurate above 600uu or so
-    def __init__(self, ball_location, intercept_time, shot_vector, ratio):
+    def __init__(self, ball_location, intercept_time, shot_vector):
         self.ball_location = ball_location
         self.intercept_time = intercept_time
         # The direction we intend to hit the ball in
@@ -30,23 +33,23 @@ class aerial_shot():
         # If we need a second jump we have to let go of the jump button for 3 frames, this counts how many frames we have let go for
         self.counter = 0
 
-    def run(self, agent):
+    def run(self, drone: CarObject, agent: MyHivemind):
         raw_time_remaining = self.intercept_time - agent.time
         # Capping raw_time_remaining above 0 to prevent division problems
         time_remaining = cap(raw_time_remaining, 0.01, 10.0)
 
-        car_to_ball = self.ball_location - agent.me.location
+        car_to_ball = self.ball_location - drone.location
         # whether we are to the left or right of the shot vector
         side_of_shot = sign(self.shot_vector.cross((0, 0, 1)).dot(car_to_ball))
 
-        car_to_intercept = self.intercept - agent.me.location
+        car_to_intercept = self.intercept - drone.location
         car_to_intercept_perp = car_to_intercept.cross((0, 0, side_of_shot))  # perpendicular
         distance_remaining = car_to_intercept.flatten().magnitude()
 
         speed_required = distance_remaining / time_remaining
         # When still on the ground we pretend gravity doesn't exist, for better or worse
-        acceleration_required = backsolve(self.intercept, agent.me, time_remaining, 0 if self.jump_time == 0 else 325)
-        local_acceleration_required = agent.me.local(acceleration_required)
+        acceleration_required = backsolve(self.intercept, drone, time_remaining, 0 if self.jump_time == 0 else 325)
+        local_acceleration_required = drone.local(acceleration_required)
 
         # The adjustment causes the car to circle around the dodge point in an effort to line up with the shot vector
         # The adjustment slowly decreases to 0 as the bot nears the time to jump
@@ -57,21 +60,21 @@ class aerial_shot():
         final_target = self.intercept + ((car_to_intercept_perp.normalize() * adjustment) if self.jump_time == 0 else 0)
 
         # Some extra adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
-        if abs(agent.me.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
 
-        local_final_target = agent.me.local(final_target - agent.me.location)
+        local_final_target = drone.local(final_target - drone.location)
 
         # drawing debug lines to show the dodge point and final target (which differs due to the adjustment)
-        agent.line(agent.me.location, self.intercept)
+        agent.line(drone.location, self.intercept)
         agent.line(self.intercept - Vector3(0, 0, 100), self.intercept + Vector3(0, 0, 100), [255, 0, 0])
         agent.line(final_target - Vector3(0, 0, 100), final_target + Vector3(0, 0, 100), [0, 255, 0])
 
-        angles = defaultPD(agent, local_final_target)
+        angles = defaultPD(drone, local_final_target)
 
         if self.jump_time == 0:
-            defaultThrottle(agent, speed_required)
-            agent.controller.boost = False if abs(angles[1]) > 0.3 or agent.me.airborne else agent.controller.boost
-            agent.controller.handbrake = True if abs(angles[1]) > 2.3 else agent.controller.handbrake
+            defaultThrottle(drone, speed_required)
+            drone.controller.boost = False if abs(angles[1]) > 0.3 or drone.airborne else drone.controller.boost
+            drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
             if acceleration_required[2] > self.jump_threshold:
                 # Switch into the jump when the upward acceleration required reaches our threshold, hopefully we have aligned already...
                 self.jump_time = agent.time
@@ -79,28 +82,28 @@ class aerial_shot():
             time_since_jump = agent.time - self.jump_time
 
             # While airborne we boost if we're within 30 degrees of our local acceleration requirement
-            if agent.me.airborne and local_acceleration_required.magnitude() * time_remaining > 100:
-                angles = defaultPD(agent, local_acceleration_required)
+            if drone.airborne and local_acceleration_required.magnitude() * time_remaining > 100:
+                angles = defaultPD(drone, local_acceleration_required)
                 if abs(angles[0]) + abs(angles[1]) < 0.5:
-                    agent.controller.boost = True
+                    drone.controller.boost = True
             if self.counter == 0 and (time_since_jump <= 0.2 and local_acceleration_required[2] > 0):
                 # hold the jump button up to 0.2 seconds to get the most acceleration from the first jump
-                agent.controller.jump = True
+                drone.controller.jump = True
             elif time_since_jump > 0.2 and self.counter < 3:
                 # Release the jump button for 3 ticks
-                agent.controller.jump = False
+                drone.controller.jump = False
                 self.counter += 1
             elif local_acceleration_required[2] > 300 and self.counter == 3:
                 # the acceleration from the second jump is instant, so we only do it for 1 frame
-                agent.controller.jump = True
-                agent.controller.pitch = 0
-                agent.controller.yaw = 0
-                agent.controller.roll = 0
+                drone.controller.jump = True
+                drone.controller.pitch = 0
+                drone.controller.yaw = 0
+                drone.controller.roll = 0
                 self.counter += 1
 
         if raw_time_remaining < -0.25 or not shot_valid(agent, self):
-            agent.pop()
-            agent.push(recovery())
+            drone.pop()
+            drone.push(recovery())
 
 
 class wait():
@@ -108,15 +111,15 @@ class wait():
         self.duration = duration
         self.time = -1
 
-    def run(self, agent):
+    def run(self, drone: CarObject, agent: MyHivemind):
         if self.time == -1:
             elapsed = 0
             self.time = agent.time
         else:
             elapsed = agent.time - self.time
         if elapsed >= self.duration:
-            agent.pop()
-            agent.push(flip(agent.me.local(agent.ball.location - agent.me.location)))
+            drone.pop()
+            drone.push(flip(drone.local(agent.ball.location - drone.location)))
 
 
 class flip():
@@ -132,7 +135,7 @@ class flip():
         # keeps track of the frames the jump button has been released
         self.counter = 0
 
-    def run(self, agent):
+    def run(self, drone: CarObject, agent: MyHivemind):
         if self.time == -1:
             elapsed = 0
             self.time = agent.time
@@ -140,27 +143,27 @@ class flip():
             elapsed = agent.time - self.time
         if elapsed < self.delay:
             if elapsed < self.duration:
-                agent.controller.jump = True
+                drone.controller.jump = True
             else:
-                agent.controller.jump = False
+                drone.controller.jump = False
                 self.counter += 1
-            robbies_constant = (self.vector * 1.5 * 2200 - agent.me.velocity * 1.5) * 2 * 1.5 ** -2
-            robbies_boost_constant = agent.me.forward.flatten().normalize().dot(
-                robbies_constant.flatten().normalize()) > (0.3 if not agent.me.airborne else 0.1)
-            agent.controller.boost = robbies_boost_constant and not agent.me.supersonic
+            robbies_constant = (self.vector * 1.5 * 2200 - drone.velocity * 1.5) * 2 * 1.5 ** -2
+            robbies_boost_constant = drone.forward.flatten().normalize().dot(
+                robbies_constant.flatten().normalize()) > (0.3 if not drone.airborne else 0.1)
+            drone.controller.boost = robbies_boost_constant and not drone.supersonic
         elif elapsed >= self.delay and self.counter < 3:
-            agent.controller.jump = False
+            drone.controller.jump = False
             self.counter += 1
         elif elapsed < 0.9:
-            agent.controller.jump = True
-            defaultPD(agent, self.vector)
-            agent.controller.pitch = self.pitch
+            drone.controller.jump = True
+            defaultPD(drone, self.vector)
+            drone.controller.pitch = self.pitch
             if abs(self.vector[1]) < 0.175:
-                agent.controller.yaw = self.yaw
-            agent.controller.roll = 0
+                drone.controller.yaw = self.yaw
+            drone.controller.roll = 0
         else:
-            agent.pop()
-            agent.push(recovery(self.vector, target_local=True))
+            drone.pop()
+            drone.push(recovery(self.vector, target_local=True))
 
 
 class speedflip():
@@ -181,14 +184,14 @@ class speedflip():
         # keeps track of the frames the jump button has been released
         self.counter = 0
 
-    def run(self, agent):
+    def run(self, drone: CarObject, agent: MyHivemind):
         # An example of pushing routines to the stack:
         agent.line(Vector3(0, 0, 50), 2000 * self.vector.flatten(), color=[255, 0, 0])
-        agent.line(Vector3(0, 0, 50), 2000 * agent.me.forward.flatten(), color=[0, 255, 0])
-        robbies_constant = (self.vector * 1.5 * 2200 - agent.me.velocity * 1.5) * 2 * 1.5 ** -2
-        robbies_boost_constant = agent.me.forward.flatten().normalize().dot(robbies_constant.flatten().normalize()) > (
-            0.3 if not agent.me.airborne else 0.1)
-        agent.controller.boost = robbies_boost_constant and self.boost and not agent.me.supersonic
+        agent.line(Vector3(0, 0, 50), 2000 * drone.forward.flatten(), color=[0, 255, 0])
+        robbies_constant = (self.vector * 1.5 * 2200 - drone.velocity * 1.5) * 2 * 1.5 ** -2
+        robbies_boost_constant = drone.forward.flatten().normalize().dot(robbies_constant.flatten().normalize()) > (
+            0.3 if not drone.airborne else 0.1)
+        drone.controller.boost = robbies_boost_constant and self.boost and not drone.supersonic
         if self.time == -1:
             elapsed = 0
             self.time = agent.time
@@ -196,22 +199,21 @@ class speedflip():
             elapsed = agent.time - self.time
         if elapsed < self.delay:
             if elapsed < self.duration:
-                agent.controller.jump = True
+                drone.controller.jump = True
             else:
-                agent.controller.jump = False
+                drone.controller.jump = False
                 self.counter += 1
-            defaultPD(agent, self.preorientation)
+            defaultPD(drone, self.preorientation)
         elif elapsed >= self.delay and self.counter < 3:
-            agent.controller.jump = False
-            defaultPD(agent, self.preorientation)
-            print(agent.controller.pitch, agent.controller.yaw)
+            drone.controller.jump = False
+            defaultPD(drone, self.preorientation)
             self.counter += 1
         elif elapsed < self.delay + 0.05:
-            agent.controller.jump = True
-            defaultPD(agent, self.vector)
+            drone.controller.jump = True
+            defaultPD(drone, self.vector)
         else:
-            agent.pop()
-            agent.push(recovery(boost=self.boost, time=agent.time))
+            drone.pop()
+            drone.push(recovery(boost=self.boost, time=agent.time))
 
 
 class goto():
@@ -223,8 +225,8 @@ class goto():
         self.vector = vector
         self.direction = direction
 
-    def run(self, agent):
-        car_to_target = self.target - agent.me.location
+    def run(self, drone: CarObject, agent: MyHivemind):
+        car_to_target = self.target - drone.location
         distance_remaining = car_to_target.flatten().magnitude()
 
         agent.line(self.target - Vector3(0, 0, 500), self.target + Vector3(0, 0, 500), [255, 0, 255])
@@ -239,71 +241,26 @@ class goto():
             final_target = self.target
 
         # Some adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
-        if abs(agent.me.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
 
-        local_target = agent.me.local(final_target - agent.me.location)
+        local_target = drone.local(final_target - drone.location)
 
-        angles = defaultPD(agent, local_target, self.direction)
-        defaultThrottle(agent, 2300, self.direction)
+        angles = defaultPD(drone, local_target, self.direction)
+        defaultThrottle(drone, 2300, self.direction)
 
-        agent.controller.boost = False
-        agent.controller.handbrake = True if abs(angles[1]) > 2.3 else agent.controller.handbrake
+        drone.controller.boost = False
+        drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
 
-        velocity = 1 + agent.me.velocity.magnitude()
+        velocity = 1 + drone.velocity.magnitude()
         if distance_remaining < 350:
-            agent.pop()
+            drone.pop()
         elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and distance_remaining / velocity > 2.0:
-            agent.push(flip(local_target))
+            drone.push(flip(local_target))
         # TODO Halfflip
         # elif abs(angles[1]) > 2.8 and velocity < 200:
         #     agent.push(flip(local_target, True))
-        elif agent.me.airborne:
-            agent.push(recovery(self.target))
-
-
-class cheating():
-    # Drives towards a designated (stationary) target
-    # Optional vector controls where the car should be pointing upon reaching the target
-    # TODO - slow down if target is inside our turn radius
-    def __init__(self, vector=None, direction=1):
-        self.vector = vector
-        self.direction = direction
-
-    def run(self, agent):
-        car_to_target = agent.ball.location - agent.me.location
-        distance_remaining = car_to_target.flatten().magnitude()
-
-        agent.line(agent.ball.location - Vector3(0, 0, 500), agent.ball.location + Vector3(0, 0, 500), [255, 0, 255])
-
-        if self.vector != None:
-            # See commends for adjustment in jump_shot or aerial for explanation
-            side_of_vector = sign(self.vector.cross((0, 0, 1)).dot(car_to_target))
-            car_to_target_perp = car_to_target.cross((0, 0, side_of_vector)).normalize()
-            adjustment = car_to_target.angle(self.vector) * distance_remaining / 3.14
-            final_target = agent.ball.location + (car_to_target_perp * adjustment)
-        else:
-            final_target = agent.ball.location
-
-        # Some adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
-        if abs(agent.me.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
-
-        local_target = agent.me.local(final_target - agent.me.location)
-
-        angles = defaultPD(agent, local_target, self.direction)
-        defaultThrottle(agent, 2300, self.direction)
-
-        agent.controller.boost = False
-        agent.controller.handbrake = True if abs(angles[1]) > 2.3 else agent.controller.handbrake
-
-        velocity = 1 + agent.me.velocity.magnitude()
-        if not agent.kickoff_flag:
-            agent.pop()
-            targets = {"goal" : (agent.foe_goal.left_post, agent.foe_goal.right_post)}
-            shots = find_hits(agent, targets)
-            if len(shots["goal"]) > 0:
-                agent.push(shots["goal"][0])
-        elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and distance_remaining / velocity > 2.0:
-            agent.push(flip(local_target))
+        elif drone.airborne:
+            drone.push(recovery(self.target))
 
 
 class goto_boost():
@@ -313,8 +270,8 @@ class goto_boost():
         self.boost = boost
         self.target = target
 
-    def run(self, agent):
-        car_to_boost = self.boost.location - agent.me.location
+    def run(self, drone: CarObject, agent: MyHivemind):
+        car_to_boost = self.boost.location - drone.location
         distance_remaining = car_to_boost.flatten().magnitude()
 
         agent.line(self.boost.location - Vector3(0, 0, 500), self.boost.location + Vector3(0, 0, 500), [0, 255, 0])
@@ -325,31 +282,31 @@ class goto_boost():
             car_to_boost_perp = car_to_boost.cross((0, 0, side_of_vector)).normalize()
             adjustment = car_to_boost.angle(vector) * distance_remaining / 3.14
             final_target = self.boost.location + (car_to_boost_perp * adjustment)
-            car_to_target = (self.target - agent.me.location).magnitude()
+            car_to_target = (self.target - drone.location).magnitude()
         else:
             adjustment = 9999
             car_to_target = 0
             final_target = self.boost.location
 
         # Some adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
-        if abs(agent.me.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
 
-        local_target = agent.me.local(final_target - agent.me.location)
+        local_target = drone.local(final_target - drone.location)
 
-        angles = defaultPD(agent, local_target)
-        defaultThrottle(agent, 2300)
+        angles = defaultPD(drone, local_target)
+        defaultThrottle(drone, 2300)
 
-        agent.controller.boost = self.boost.large if abs(angles[1]) < 0.3 else False
-        agent.controller.handbrake = True if abs(angles[1]) > 2.3 else agent.controller.handbrake
+        drone.controller.boost = self.boost.large if abs(angles[1]) < 0.3 else False
+        drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
 
-        velocity = 1 + agent.me.velocity.magnitude()
-        if self.boost.active == False or agent.me.boost >= 99.0 or distance_remaining < 350:
-            agent.pop()
-        elif agent.me.airborne:
-            agent.push(recovery(self.target))
-        elif abs(angles[1]) < 0.05 and velocity > 600 and velocity < 2150 and (
+        velocity = 1 + drone.velocity.magnitude()
+        if not self.boost.active or drone.boost >= 99.0 or distance_remaining < 350:
+            drone.pop()
+        elif drone.airborne:
+            drone.push(recovery(self.target))
+        elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and (
                 distance_remaining / velocity > 2.0 or (adjustment < 90 and car_to_target / velocity > 2.0)):
-            agent.push(flip(local_target))
+            drone.push(flip(local_target))
 
 
 class jump_shot():
@@ -379,21 +336,21 @@ class jump_shot():
         self.dodging = False
         self.counter = 0
 
-    def run(self, agent):
+    def run(self, drone: CarObject, agent: MyHivemind):
         raw_time_remaining = self.intercept_time - agent.time
         # Capping raw_time_remaining above 0 to prevent division problems
         time_remaining = cap(raw_time_remaining, 0.001, 10.0)
-        car_to_ball = self.ball_location - agent.me.location
+        car_to_ball = self.ball_location - drone.location
         # whether we are to the left or right of the shot vector
         side_of_shot = sign(self.shot_vector.cross((0, 0, 1)).dot(car_to_ball))
 
-        car_to_dodge_point = self.dodge_point - agent.me.location
+        car_to_dodge_point = self.dodge_point - drone.location
         car_to_dodge_perp = car_to_dodge_point.cross((0, 0, side_of_shot))  # perpendicular
         distance_remaining = car_to_dodge_point.magnitude()
 
         speed_required = distance_remaining / time_remaining
-        acceleration_required = backsolve(self.dodge_point, agent.me, time_remaining, 0 if not self.jumping else 650)
-        local_acceleration_required = agent.me.local(acceleration_required)
+        acceleration_required = backsolve(self.dodge_point, drone, time_remaining, 0 if not self.jumping else 650)
+        local_acceleration_required = drone.local(acceleration_required)
 
         # The adjustment causes the car to circle around the dodge point in an effort to line up with the shot vector
         # The adjustment slowly decreases to 0 as the bot nears the time to jump
@@ -406,94 +363,95 @@ class jump_shot():
         # Ensuring our target isn't too close to the sides of the field, where our car would get messed up by the radius of the curves
 
         # Some adjustment to the final target to ensure it's inside the field and we don't try to dirve through any goalposts to reach it
-        if abs(agent.me.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
 
-        local_final_target = agent.me.local(final_target - agent.me.location)
+        local_final_target = drone.local(final_target - drone.location)
 
         # drawing debug lines to show the dodge point and final target (which differs due to the adjustment)
-        agent.line(agent.me.location, self.dodge_point)
+        agent.line(drone.location, self.dodge_point)
         agent.line(self.dodge_point - Vector3(0, 0, 100), self.dodge_point + Vector3(0, 0, 100), [255, 0, 0])
         agent.line(final_target - Vector3(0, 0, 100), final_target + Vector3(0, 0, 100), [0, 255, 0])
 
         # Calling our drive utils to get us going towards the final target
-        angles = defaultPD(agent, local_final_target, self.direction)
-        defaultThrottle(agent, speed_required, self.direction)
+        angles = defaultPD(drone, local_final_target, self.direction)
+        defaultThrottle(drone, speed_required, self.direction)
 
-        agent.line(agent.me.location, agent.me.location + (self.shot_vector * 200), [255, 255, 255])
+        agent.line(drone.location, drone.location + (self.shot_vector * 200), [255, 255, 255])
 
-        agent.controller.boost = False if abs(angles[1]) > 0.3 or agent.me.airborne else agent.controller.boost
-        agent.controller.handbrake = True if abs(
-            angles[1]) > 2.3 and self.direction == 1 else agent.controller.handbrake
+        drone.controller.boost = False if abs(angles[1]) > 0.3 or drone.airborne else drone.controller.boost
+        drone.controller.handbrake = True if abs(
+            angles[1]) > 2.3 and self.direction == 1 else drone.controller.handbrake
 
         if not self.jumping:
             if raw_time_remaining <= 0.0 or (speed_required - 2300) * time_remaining > 45 or not shot_valid(agent,
                                                                                                             self):
                 # If we're out of time or not fast enough to be within 45 units of target at the intercept time, we pop
-                agent.pop()
-                if agent.me.airborne:
-                    agent.push(recovery())
+                drone.pop()
+                if drone.airborne:
+                    drone.push(recovery())
             elif local_acceleration_required[2] > self.jump_threshold and local_acceleration_required[
                 2] > local_acceleration_required.flatten().magnitude():
                 # Switch into the jump when the upward acceleration required reaches our threshold, and our lateral acceleration is negligible
                 self.jumping = True
         else:
             if (raw_time_remaining > 0.2 and not shot_valid(agent, self, 150)) or raw_time_remaining <= -0.9 or (
-                    not agent.me.airborne and self.counter > 0):
-                agent.pop()
-                agent.push(recovery())
+                    not drone.airborne and self.counter > 0):
+                drone.pop()
+                drone.push(recovery())
             elif self.counter == 0 and local_acceleration_required[2] > 0.0 and raw_time_remaining > 0.083:
                 # Initial jump to get airborne + we hold the jump button for extra power as required
-                agent.controller.jump = True
+                drone.controller.jump = True
             elif self.counter < 3:
                 # make sure we aren't jumping for at least 3 frames
-                agent.controller.jump = False
+                drone.controller.jump = False
                 self.counter += 1
-            elif raw_time_remaining <= 0.1 and raw_time_remaining > -0.9:
+            elif 0.1 >= raw_time_remaining > -0.9:
                 # dodge in the direction of the shot_vector
-                agent.controller.jump = True
+                drone.controller.jump = True
                 if not self.dodging:
-                    vector = agent.me.local(self.shot_vector)
+                    vector = drone.local(self.shot_vector)
                     self.p = abs(vector[0]) * -sign(vector[0])
                     self.y = abs(vector[1]) * sign(vector[1]) * self.direction
                     self.dodging = True
                 # simulating a deadzone so that the dodge is more natural
-                agent.controller.pitch = self.p if abs(self.p) > 0.2 else 0
-                agent.controller.yaw = self.y if abs(self.y) > 0.3 else 0
+                drone.controller.pitch = self.p if abs(self.p) > 0.2 else 0
+                drone.controller.yaw = self.y if abs(self.y) > 0.3 else 0
 
 
 class center_kickoff():
-    def run(self, agent):
+    def run(self, drone: CarObject, agent: MyHivemind):
         target = Vector3(0, 3800 * side(agent.team), 0)
-        local_target = agent.me.local(target - agent.me.location)
-        defaultPD(agent, local_target)
-        defaultThrottle(agent, 2300)
+        local_target = drone.local(target - drone.location)
+        defaultPD(drone, local_target)
+        defaultThrottle(drone, 2300)
         if local_target.magnitude() < 100:
-            agent.pop()
-            agent.push(diagonal_kickoff())
-            agent.push(flip(Vector3(1, 0, 0)))
+            drone.pop()
+            drone.push(diagonal_kickoff())
+            drone.push(flip(Vector3(1, 0, 0)))
 
 
 class offcenter_kickoff():
-    def run(self, agent):
+    def run(self, drone: CarObject, agent: MyHivemind):
         target = Vector3(0, 3116 * side(agent.team), 0)
-        local_target = agent.me.local(target - agent.me.location)
-        defaultPD(agent, local_target)
-        defaultThrottle(agent, 2300)
+        local_target = drone.local(target - drone.location)
+        defaultPD(drone, local_target)
+        defaultThrottle(drone, 2300)
         if local_target.magnitude() < 400:
-            agent.pop()
-            agent.push(diagonal_kickoff())
-            agent.push(flip(agent.me.local(agent.ball.location - agent.me.location)))
+            drone.pop()
+            drone.push(diagonal_kickoff())
+            drone.push(flip(drone.local(agent.ball.location - drone.location)))
 
 
 class diagonal_kickoff():
-    def run(self, agent):
-        target = agent.ball.location + Vector3(0,200*side(agent.team),0)
-        local_target = agent.me.local(target - agent.me.location)
-        defaultPD(agent, local_target)
-        defaultThrottle(agent, 2300)
+    def run(self, drone: CarObject, agent: MyHivemind):
+        target = agent.ball.location + Vector3(0, 200 * side(agent.team), 0)
+        local_target = drone.local(target - drone.location)
+        defaultPD(drone, local_target)
+        defaultThrottle(drone, 2300)
         if local_target.magnitude() < 650:
-            agent.pop()
-            agent.push(flip(agent.me.local(agent.foe_goal.location - agent.me.location)))
+            drone.pop()
+            drone.push(flip(drone.local(agent.foe_goal.location - drone.location)))
+
 
 class recovery():
     # Point towards our velocity vector and land upright, unless we aren't moving very fast
@@ -504,28 +462,28 @@ class recovery():
         self.boost = boost
         self.start_time = time
 
-    def run(self, agent):
+    def run(self, drone: CarObject, agent: MyHivemind):
         if self.target != None:
             if self.target_local:
                 local_target = self.target
             else:
-                local_target = agent.me.local((self.target - agent.me.location).flatten())
+                local_target = drone.local((self.target - drone.location).flatten())
         else:
-            local_target = agent.me.local(agent.me.velocity.flatten())
+            local_target = drone.local(drone.velocity.flatten())
 
-        defaultPD(agent, local_target)
-        agent.controller.throttle = 1
-        t = (-agent.me.velocity.z - (
-                agent.me.velocity.z ** 2 + 2 * -650 * -(agent.me.location.z - 17.01)) ** 0.5) / -650
+        defaultPD(drone, local_target)
+        drone.controller.throttle = 1
+        t = (-drone.velocity.z - (
+                drone.velocity.z ** 2 + 2 * -650 * -(drone.location.z - 17.01)) ** 0.5) / -650
         if self.target is not None:
-            robbies_constant = (self.target.normalize() * t * 2200 - agent.me.velocity * t) * 2 * t ** -2
+            robbies_constant = (self.target.normalize() * t * 2200 - drone.velocity * t) * 2 * t ** -2
         else:
-            robbies_constant = (agent.me.velocity.normalize() * t * 2200 - agent.me.velocity * t) * 2 * t ** -2
-        agent.line(agent.me.location, robbies_constant, color=[255, 255, 255])
-        robbies_boost_constant = agent.me.forward.normalize().dot(robbies_constant.normalize()) > 0.5
-        agent.controller.boost = robbies_boost_constant and self.boost and not agent.me.supersonic
-        if not agent.me.airborne:
-            agent.pop()
+            robbies_constant = (drone.velocity.normalize() * t * 2200 - drone.velocity * t) * 2 * t ** -2
+        agent.line(drone.location, robbies_constant, color=[255, 255, 255])
+        robbies_boost_constant = drone.forward.normalize().dot(robbies_constant.normalize()) > 0.5
+        drone.controller.boost = robbies_boost_constant and self.boost and not drone.supersonic
+        if not drone.airborne:
+            drone.pop()
 
 
 class short_shot():
@@ -534,11 +492,11 @@ class short_shot():
     def __init__(self, target):
         self.target = target
 
-    def run(self, agent):
-        car_to_ball, distance = (agent.ball.location - agent.me.location).normalize(True)
+    def run(self, drone: CarObject, agent: MyHivemind):
+        car_to_ball, distance = (agent.ball.location - drone.location).normalize(True)
         ball_to_target = (self.target - agent.ball.location).normalize()
 
-        relative_velocity = car_to_ball.dot(agent.me.velocity - agent.ball.velocity)
+        relative_velocity = car_to_ball.dot(drone.velocity - agent.ball.velocity)
         if relative_velocity != 0.0:
             eta = cap(distance / cap(relative_velocity, 400, 2300), 0.0, 1.5)
         else:
@@ -551,15 +509,15 @@ class short_shot():
         final_target = agent.ball.location + (target_vector * (distance / 2))
 
         # Some adjustment to the final target to ensure we don't try to dirve through any goalposts to reach it
-        if abs(agent.me.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
+        if abs(drone.location[1] > 5150): final_target[0] = cap(final_target[0], -750, 750)
 
         agent.line(final_target - Vector3(0, 0, 100), final_target + Vector3(0, 0, 100), [255, 255, 255])
 
-        angles = defaultPD(agent, agent.me.local(final_target - agent.me.location))
-        defaultThrottle(agent, 2300 if distance > 1600 else 2300 - cap(1600 * abs(angles[1]), 0, 2050))
-        agent.controller.boost = False if agent.me.airborne or abs(angles[1]) > 0.3 else agent.controller.boost
-        agent.controller.handbrake = True if abs(angles[1]) > 2.3 else agent.controller.handbrake
+        angles = defaultPD(drone, drone.local(final_target - drone.location))
+        defaultThrottle(drone, 2300 if distance > 1600 else 2300 - cap(1600 * abs(angles[1]), 0, 2050))
+        drone.controller.boost = False if drone.airborne or abs(angles[1]) > 0.3 else drone.controller.boost
+        drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
 
         if abs(angles[1]) < 0.05 and (eta < 0.45 or distance < 150):
-            agent.pop()
-            agent.push(flip(agent.me.local(car_to_ball)))
+            drone.pop()
+            drone.push(flip(drone.local(car_to_ball)))

@@ -1,14 +1,14 @@
-from typing import Dict
+from typing import Dict, Union
 
-from rlbot.agents.base_agent import SimpleControllerState
 from rlbot.agents.hivemind.drone_agent import DroneAgent
 from rlbot.agents.hivemind.python_hivemind import PythonHivemind
-from rlbot.utils.structures.bot_input_struct import PlayerInput
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 
+import routines
 from objects import *
+
+
 # Dummy agent to call request MyHivemind.
-from routines import atba
 
 
 class Drone(DroneAgent):
@@ -31,7 +31,7 @@ class MyHivemind(PythonHivemind):
         self.friends = []
         self.foes = []
         # This holds the carobjects for our agent
-        self.drones = [car_object(i) for i in self.drone_indices]
+        self.drones = [CarObject(i) for i in self.drone_indices]
 
         self.ball = ball_object()
         self.game = game_object()
@@ -40,8 +40,6 @@ class MyHivemind(PythonHivemind):
         # goals
         self.friend_goal = goal_object(self.team)
         self.foe_goal = goal_object(not self.team)
-        # A list that acts as the routines stack
-        self.stack = []
         # Game time
         self.time = 0.0
         # Whether or not GoslingAgent has run its get_ready() function
@@ -67,32 +65,13 @@ class MyHivemind(PythonHivemind):
         # makes new friend/foe lists
         # Useful to keep separate from get_ready because humans can join/leave a match
         drone_indices = [drone.index for drone in self.drones]
-        self.friends = [car_object(i, packet) for i in range(packet.num_cars) if
+        self.friends = [CarObject(i, packet) for i in range(packet.num_cars) if
                         packet.game_cars[i].team == self.team and i not in drone_indices]
-        self.foes = [car_object(i, packet) for i in range(packet.num_cars) if packet.game_cars[i].team != self.team]
-
-    def push(self, routine):
-        # Shorthand for adding a routine to the stack
-        self.stack.append(routine)
-
-    def pop(self):
-        # Shorthand for removing a routine from the stack, returns the routine
-        return self.stack.pop()
+        self.foes = [CarObject(i, packet) for i in range(packet.num_cars) if packet.game_cars[i].team != self.team]
 
     def line(self, start, end, color=None):
         color = color if color != None else [255, 255, 255]
         self.renderer.draw_line_3d(start, end, self.renderer.create_color(255, *color))
-
-    def debug_stack(self):
-        # Draws the stack on the screen
-        white = self.renderer.white()
-        for i in range(len(self.stack) - 1, -1, -1):
-            text = self.stack[i].__class__.__name__
-            self.renderer.draw_string_2d(10, 50 + (50 * (len(self.stack) - i)), 3, 3, text, white)
-
-    def clear(self):
-        # Shorthand for clearing the stack of all routines
-        self.stack = []
 
     def preprocess(self, packet):
         # Calling the update functions for all of the objects
@@ -106,7 +85,8 @@ class MyHivemind(PythonHivemind):
         self.time = packet.game_info.seconds_elapsed
         # When a new kickoff begins we empty the stack
         if not self.kickoff_flag and packet.game_info.is_round_active and packet.game_info.is_kickoff_pause:
-            self.stack = []
+            for drone in self.drones:
+                drone.clear()
         # Tells us when to go for kickoff
         self.kickoff_flag = packet.game_info.is_round_active and packet.game_info.is_kickoff_pause
 
@@ -121,8 +101,8 @@ class MyHivemind(PythonHivemind):
         self.run()
         # run the routine on the end of the stack
         for drone in self.drones:
-            if len(self.stack) > 0:
-                self.stack[-1].run(drone, self.ball.location)
+            if len(drone.stack) > 0:
+                drone.stack[-1].run(drone, self)
         self.renderer.end_rendering()
         # send our updated controller back to rlbot
         # return self.controller
@@ -130,64 +110,6 @@ class MyHivemind(PythonHivemind):
         return {drone.index: drone.controller for drone in self.drones}
 
     def run(self):
-        print(self.drone_indices)
-        print(len(self.friends))
-        if len(self.stack) < 1:
-            self.push(atba())
-
-
-class car_object:
-    # The carObject, and kin, convert the gametickpacket in something a little friendlier to use,
-    # and are updated by GoslingAgent as the game runs
-    def __init__(self, index, packet=None):
-        self.location = Vector3(0, 0, 0)
-        self.orientation = Matrix3(0, 0, 0)
-        self.velocity = Vector3(0, 0, 0)
-        self.angular_velocity = [0, 0, 0]
-        self.demolished = False
-        self.airborne = False
-        self.supersonic = False
-        self.jumped = False
-        self.doublejumped = False
-        self.team = 0
-        self.boost = 0
-        self.index = index
-        self.controller = PlayerInput()
-        if packet != None:
-            self.team = packet.game_cars[self.index].team
-            self.update(packet)
-
-    def local(self, value):
-        # Shorthand for self.orientation.dot(value)
-        return self.orientation.dot(value)
-
-    def update(self, packet):
-        car = packet.game_cars[self.index]
-        self.location.data = [car.physics.location.x, car.physics.location.y, car.physics.location.z]
-        self.velocity.data = [car.physics.velocity.x, car.physics.velocity.y, car.physics.velocity.z]
-        self.orientation = Matrix3(car.physics.rotation.pitch, car.physics.rotation.yaw, car.physics.rotation.roll)
-        self.angular_velocity = self.orientation.dot(
-            [car.physics.angular_velocity.x, car.physics.angular_velocity.y, car.physics.angular_velocity.z]).data
-        self.demolished = car.is_demolished
-        self.airborne = not car.has_wheel_contact
-        self.supersonic = car.is_super_sonic
-        self.jumped = car.jumped
-        self.doublejumped = car.double_jumped
-        self.boost = car.boost
-        # Reset controller
-        self.controller.__init__()
-
-    @property
-    def forward(self):
-        # A vector pointing forwards relative to the cars orientation. Its magnitude is 1
-        return self.orientation.forward
-
-    @property
-    def left(self):
-        # A vector pointing left relative to the cars orientation. Its magnitude is 1
-        return self.orientation.left
-
-    @property
-    def up(self):
-        # A vector pointing up relative to the cars orientation. Its magnitude is 1
-        return self.orientation.up
+        for drone in self.drones:
+            if len(drone.stack) < 1:
+                drone.push(routines.atba())

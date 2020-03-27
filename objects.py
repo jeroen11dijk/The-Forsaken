@@ -1,23 +1,28 @@
 import math
+
 import rlbot.utils.structures.game_data_struct as game_data_struct
+from rlbot.utils.structures.bot_input_struct import PlayerInput
 
 
-class car_object:
+class CarObject:
     # The carObject, and kin, convert the gametickpacket in something a little friendlier to use,
     # and are updated by GoslingAgent as the game runs
     def __init__(self, index, packet=None):
-        self.location = Vector3(0, 0, 0)
-        self.orientation = Matrix3(0, 0, 0)
-        self.velocity = Vector3(0, 0, 0)
-        self.angular_velocity = [0, 0, 0]
-        self.demolished = False
-        self.airborne = False
-        self.supersonic = False
-        self.jumped = False
-        self.doublejumped = False
-        self.team = 0
-        self.boost = 0
-        self.index = index
+        self.location: Vector3 = Vector3(0, 0, 0)
+        self.orientation: Matrix3 = Matrix3(0, 0, 0)
+        self.velocity: Vector3 = Vector3(0, 0, 0)
+        self.angular_velocity: [] = [0, 0, 0]
+        self.demolished: bool = False
+        self.airborne: bool = False
+        self.supersonic: bool = False
+        self.jumped: bool = False
+        self.doublejumped: bool = False
+        self.team: float = 0
+        self.boost:float = 0
+        self.index:float = index
+        self.controller: PlayerInput = PlayerInput()
+        # A list that acts as the routines stack
+        self.stack: [] = []
         if packet != None:
             self.team = packet.game_cars[self.index].team
             self.update(packet)
@@ -39,6 +44,8 @@ class car_object:
         self.jumped = car.jumped
         self.doublejumped = car.double_jumped
         self.boost = car.boost
+        # Reset controller
+        self.controller.__init__()
 
     @property
     def forward(self):
@@ -55,6 +62,24 @@ class car_object:
         # A vector pointing up relative to the cars orientation. Its magnitude is 1
         return self.orientation.up
 
+    def push(self, routine):
+        # Shorthand for adding a routine to the stack
+        self.stack.append(routine)
+
+    def pop(self):
+        # Shorthand for removing a routine from the stack, returns the routine
+        return self.stack.pop()
+
+    def clear(self):
+        # Shorthand for clearing the stack of all routines
+        self.stack = []
+
+    def debug_stack(self):
+        # Draws the stack on the screen
+        white = self.renderer.white()
+        for i in range(len(self.stack) - 1, -1, -1):
+            text = self.stack[i].__class__.__name__
+            self.renderer.draw_string_2d(10, 50 + (50 * (len(self.stack) - i)), 3, 3, text, white)
 
 class ball_object:
     def __init__(self):
