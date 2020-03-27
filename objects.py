@@ -139,7 +139,8 @@ class GameObject:
 
 
 class Matrix3:
-    # The Matrix3's sole purpose is to convert roll, pitch, and yaw data from the gametickpaket into an orientation matrix
+    # The Matrix3's sole purpose is to convert roll, pitch,
+    # and yaw data from the gametickpaket into an orientation matrix
     # An orientation matrix contains 3 Vector3's
     # Matrix3[0] is the "forward" direction of a given car
     # Matrix3[1] is the "left" direction of a given car
@@ -167,7 +168,7 @@ class Matrix3:
     def __getitem__(self, key: int) -> Vector3:
         return self.data[key]
 
-    def dot(self, vector: Vector3) -> Vector3:
+    def dot(self, vector) -> Vector3:
         return Vector3(self.forward.dot(vector), self.left.dot(vector), self.up.dot(vector))
 
 
@@ -188,7 +189,7 @@ class Vector3:
         elif len(args) == 3:
             self.data = list(args)
         else:
-            raise TypeError("Vector3 unable to accept %s" % (args))
+            raise TypeError("Vector3 unable to accept %s" % args)
 
     # Property functions allow you to use `Vector3.x` vs `Vector3[0]`
     @property
@@ -301,7 +302,7 @@ class Vector3:
     def dot(self, value: Vector3) -> float:
         return self[0] * value[0] + self[1] * value[1] + self[2] * value[2]
 
-    def cross(self, value: Vector3) -> Vector3:
+    def cross(self, value) -> Vector3:
         return Vector3((self[1] * value[2]) - (self[2] * value[1]), (self[2] * value[0]) - (self[0] * value[2]),
                        (self[0] * value[1]) - (self[1] * value[0]))
 

@@ -50,7 +50,7 @@ def defaultPD(drone: CarObject, local_target: Vector3, direction: float = 1.0) -
     return target_angles
 
 
-def defaultThrottle(drone: CarObject, target_speed: int, direction: float = 1.0) -> Vector3:
+def defaultThrottle(drone: CarObject, target_speed: float, direction: float = 1.0) -> float:
     # accelerates the car to a desired speed using throttle and boost
     car_speed = drone.local(drone.velocity)[0]
     t = (target_speed * direction) - car_speed
