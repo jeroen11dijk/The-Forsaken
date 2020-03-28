@@ -545,6 +545,7 @@ class ShortShot(Routine):
         self.target = target
 
     def run(self, drone: CarObject, agent: MyHivemind):
+        print(self.target)
         car_to_ball, distance = (agent.ball.location - drone.location).normalize(True)
         ball_to_target = (self.target - agent.ball.location).normalize()
 

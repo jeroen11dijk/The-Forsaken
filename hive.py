@@ -5,11 +5,10 @@ from rlbot.agents.hivemind.python_hivemind import PythonHivemind
 from rlbot.utils.structures.bot_input_struct import PlayerInput
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 
-import routines
 from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3
 
-
 # Dummy agent to call request MyHivemind.
+from gamemodes import run_3v3_hiveminds
 
 
 class Drone(DroneAgent):
@@ -97,11 +96,12 @@ class MyHivemind(PythonHivemind):
         self.game.update(packet)
         self.time = packet.game_info.seconds_elapsed
         # When a new kickoff begins we empty the stack
-        if not self.kickoff_flag and packet.game_info.is_round_active and packet.game_info.is_kickoff_pause:
+        print(packet.game_info.is_kickoff_pause)
+        if not self.kickoff_flag and packet.game_info.is_kickoff_pause:
             for drone in self.drones:
                 drone.clear()
         # Tells us when to go for kickoff
-        self.kickoff_flag = packet.game_info.is_round_active and packet.game_info.is_kickoff_pause
+        self.kickoff_flag = packet.game_info.is_kickoff_pause
 
     def get_outputs(self, packet: GameTickPacket) -> Dict[int, PlayerInput]:
         # Get ready, then preprocess
@@ -119,10 +119,24 @@ class MyHivemind(PythonHivemind):
         self.renderer.end_rendering()
         # send our updated controller back to rlbot
         # return self.controller
-
         return {drone.index: drone.controller for drone in self.drones}
 
+    def debug_stack(self):
+        # Draws the stack on the screen
+        white = self.renderer.white()
+        offset = 0
+        for i in range(len(self.drones)):
+            self.renderer.draw_string_2d(10, 50 + 50 * offset, 3, 3, "Drone: " + str(i), white)
+            offset += 1
+            for j in range(len(self.drones[i].stack) - 1, -1, -1):
+                text = self.drones[i].stack[j].__class__.__name__
+                self.renderer.draw_string_2d(10, 50 + 50 * offset, 3, 3, text, white)
+                offset += 1
+
     def run(self):
-        for drone in self.drones:
-            if len(drone.stack) < 1:
-                drone.push(routines.Atba())
+        if len(self.drones) < 3 or len(self.drones) > 3:
+            print("At the moment we only support 3v3 with 3 hiveminds!")
+        else:
+            if len(self.friends) > 0:
+                print("At the moment we only support 3v3 with 3 hiveminds, but we will play our 3v3 game")
+            run_3v3_hiveminds(self)
