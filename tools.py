@@ -4,8 +4,8 @@ import math
 from typing import TYPE_CHECKING
 
 from objects import Vector3, Action
-from utils import cap, in_field, post_correction, find_slope, side
-import routines
+from routines import OffCenterKickoff, GotoBoost, Shadow, DiagonalKickoff, JumpShot, AerialShot
+from utils import cap, in_field, post_correction, find_slope, side, closest_boost
 
 if TYPE_CHECKING:
     from hive import MyHivemind
@@ -85,13 +85,13 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
                             slope = find_slope(best_shot_vector, car_to_ball)
                             if forward_flag:
                                 if ball_location[2] <= 300 and slope > 0.0:
-                                    hits[pair].append(routines.JumpShot(ball_location, intercept_time, best_shot_vector, slope))
+                                    hits[pair].append(JumpShot(ball_location, intercept_time, best_shot_vector, slope))
                                 if 300 < ball_location[2] < 600 and slope > 1.0 and (
                                         ball_location[2] - 250) * 0.14 > drone.boost:
                                     hits[pair].append(
-                                        routines.AerialShot(ball_location, intercept_time, best_shot_vector))
+                                        AerialShot(ball_location, intercept_time, best_shot_vector))
                             elif backward_flag and ball_location[2] <= 280 and slope > 0.25:
-                                hits[pair].append(routines.JumpShot(ball_location, intercept_time, best_shot_vector, slope, -1))
+                                hits[pair].append(JumpShot(ball_location, intercept_time, best_shot_vector, slope, -1))
     return hits
 
 
@@ -108,3 +108,47 @@ def push_shot(drone: CarObject, agent: MyHivemind):
         drone.clear()
         drone.push(shots["upfield"][0])
         drone.action = Action.Going
+
+
+def setup_3s_kickoff(agent: MyHivemind):
+    x_pos = [round(drone.location.x) for drone in agent.drones]
+    if sorted(x_pos) in [[-2048, -256, 2048], [-2048, 0, 2048], [-2048, 256, 2048]]:
+        for drone in agent.drones:
+            if round(drone.location.x) == -2048:
+                drone.push(DiagonalKickoff())
+                drone.action = Action.Going
+            elif round(drone.location.x) == 2048:
+                drone.push(Shadow(agent.ball.location))
+                drone.action = Action.Shadowing
+            else:
+                drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
+                drone.action = Action.Boost
+    elif sorted(x_pos) == [-256, 0, 256]:
+        for drone in agent.drones:
+            if round(drone.location.x) == -256:
+                drone.push(OffCenterKickoff())
+                drone.action = Action.Going
+            elif round(drone.location.x) == 256:
+                drone.push(Shadow(agent.ball.location))
+                drone.action = Action.Shadowing
+            else:
+                drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
+                drone.action = Action.Boost
+    elif -2048 in x_pos or 2048 in x_pos:
+        for drone in agent.drones:
+            if round(abs(drone.location.x)) == 2048:
+                drone.push(DiagonalKickoff())
+                drone.action = Action.Going
+            elif round(drone.location.x) == -256:
+                drone.push(Shadow(agent.ball.location))
+                drone.action = Action.Shadowing
+            elif round(drone.location.x) == 0:
+                drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
+                drone.action = Action.Boost
+            else:
+                if 0 in x_pos:
+                    drone.push(Shadow(agent.ball.location))
+                    drone.action = Action.Shadowing
+                else:
+                    drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
+                    drone.action = Action.Boost
