@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import math
 from typing import TYPE_CHECKING
-
-from objects import Vector3
+from objects import Vector3, Routine
 from utils import cap, defaultPD, defaultThrottle, sign, backsolve, shot_valid, side
 
 if TYPE_CHECKING:
@@ -12,14 +11,6 @@ if TYPE_CHECKING:
 
 
 # This file holds all of the mechanical tasks, called "routines", that the bot can do
-
-class Routine:
-    def __init__(self):
-        pass
-
-    def run(self, drone: CarObject, agent: MyHivemind):
-        pass
-
 
 class Atba(Routine):
     # An example routine that just drives towards the ball at max speed
@@ -270,7 +261,7 @@ class Goto(Routine):
 
         # Some adjustment to the final target to ensure it's inside the field and
         # we don't try to drive through any goalposts to reach it
-        if abs(drone.location[1] > 5150):
+        if abs(drone.location[1]) > 5150:
             final_target[0] = cap(final_target[0], -750, 750)
 
         local_target = drone.local(final_target - drone.location)
@@ -293,13 +284,63 @@ class Goto(Routine):
             drone.push(Recovery(self.target))
 
 
+class Shadow(Routine):
+    # Drives towards a designated (stationary) target
+    # Optional vector controls where the car should be pointing upon reaching the target
+    # TODO - slow down if target is inside our turn radius
+    def __init__(self, vector: Vector3 = None, direction: float = 1):
+        super().__init__()
+        self.vector = vector
+        self.direction = direction
+
+    def run(self, drone: CarObject, agent: MyHivemind):
+        target = agent.friend_goal.location + (agent.ball.location - agent.friend_goal.location) / 2
+        car_to_target = target - drone.location
+        distance_remaining = car_to_target.flatten().magnitude()
+
+        agent.line(target - Vector3(0, 0, 500), target + Vector3(0, 0, 500), [255, 0, 255])
+
+        if self.vector is not None:
+            # See commends for adjustment in jump_shot or aerial for explanation
+            side_of_vector = sign(self.vector.cross((0, 0, 1)).dot(car_to_target))
+            car_to_target_perp = car_to_target.cross((0, 0, side_of_vector)).normalize()
+            adjustment = car_to_target.angle(self.vector) * distance_remaining / 3.14
+            final_target = target + (car_to_target_perp * adjustment)
+        else:
+            final_target = target
+
+        # Some adjustment to the final target to ensure it's inside the field and
+        # we don't try to drive through any goalposts to reach it
+        if abs(drone.location[1]) > 5150:
+            final_target[0] = cap(final_target[0], -750, 750)
+
+        local_target = drone.local(final_target - drone.location)
+
+        angles = defaultPD(drone, local_target, self.direction)
+        defaultThrottle(drone, 2300, self.direction)
+
+        drone.controller.boost = False
+        drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
+
+        velocity = 1 + drone.velocity.magnitude()
+        if distance_remaining < 350:
+            drone.pop()
+        elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and distance_remaining / velocity > 2.0:
+            drone.push(Flip(local_target))
+        # TODO Halfflip
+        # elif abs(angles[1]) > 2.8 and velocity < 200:
+        #     agent.push(flip(local_target, True))
+        elif drone.airborne:
+            drone.push(Recovery(target))
+
+
 class GotoBoost(Routine):
     # very similar to goto() but designed for grabbing boost
     # if a target is provided the bot will try to be facing the target as it passes over the boost
     def __init__(self, boost: BoostObject, target: Vector3 = None):
         super().__init__()
-        self.boost = boost
-        self.target = target
+        self.boost: BoostObject = boost
+        self.target: Vector3 = target
 
     def run(self, drone: CarObject, agent: MyHivemind):
         car_to_boost = self.boost.location - drone.location
@@ -321,7 +362,7 @@ class GotoBoost(Routine):
 
         # Some adjustment to the final target to ensure it's inside the field and
         # we don't try to dirve through any goalposts to reach it
-        if abs(drone.location[1] > 5150):
+        if abs(drone.location[1]) > 5150:
             final_target[0] = cap(final_target[0], -750, 750)
 
         local_target = drone.local(final_target - drone.location)
@@ -402,7 +443,7 @@ class JumpShot(Routine):
 
         # Some adjustment to the final target to ensure it's inside the field and
         # we don't try to dirve through any goalposts to reach it
-        if abs(drone.location[1] > 5150):
+        if abs(drone.location[1]) > 5150:
             final_target[0] = cap(final_target[0], -750, 750)
 
         local_final_target = drone.local(final_target - drone.location)
@@ -525,7 +566,7 @@ class Recovery(Routine):
         defaultPD(drone, local_target)
         drone.controller.throttle = 1
         t = (-drone.velocity.z - (
-                drone.velocity.z ** 2 + 2 * -650 * -(drone.location.z - 17.01)) ** 0.5) / -650
+                drone.velocity.z ** 2 + 2 * -650 * -(max(drone.location.z - 17.01, 0.01))) ** 0.5) / -650
         if self.target is not None:
             robbies_constant = (self.target.normalize() * t * 2200 - drone.velocity * t) * 2 * t ** -2
         else:
@@ -545,7 +586,6 @@ class ShortShot(Routine):
         self.target = target
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        print(self.target)
         car_to_ball, distance = (agent.ball.location - drone.location).normalize(True)
         ball_to_target = (self.target - agent.ball.location).normalize()
 
@@ -562,7 +602,7 @@ class ShortShot(Routine):
         final_target = agent.ball.location + (target_vector * (distance / 2))
 
         # Some adjustment to the final target to ensure we don't try to drive through any goalposts to reach it
-        if abs(drone.location[1] > 5150):
+        if abs(drone.location[1]) > 5150:
             final_target[0] = cap(final_target[0], -750, 750)
 
         agent.line(final_target - Vector3(0, 0, 100), final_target + Vector3(0, 0, 100), [255, 255, 255])

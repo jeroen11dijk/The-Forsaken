@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from enum import Enum
 from typing import TYPE_CHECKING, Union
 
 import rlbot.utils.structures.game_data_struct as game_data_struct
@@ -8,7 +9,6 @@ from rlbot.utils.structures.bot_input_struct import PlayerInput
 
 if TYPE_CHECKING:
     from rlbot.utils.structures.game_data_struct import GameTickPacket
-    from routines import Routine
 
 
 class CarObject:
@@ -30,6 +30,7 @@ class CarObject:
         self.controller: PlayerInput = PlayerInput()
         # A list that acts as the routines stack
         self.stack: [] = []
+        self.action: Action = Action.Nothing
         if packet is not None:
             self.team = packet.game_cars[self.index].team
             self.update(packet)
@@ -52,7 +53,7 @@ class CarObject:
         self.doublejumped = car.double_jumped
         self.boost = car.boost
         # Reset controller
-        self.controller.__init__()
+        self.controller = PlayerInput()
 
     @property
     def forward(self) -> Vector3:
@@ -340,3 +341,21 @@ class Vector3:
         if start.dot(s) < end.dot(s):
             return end
         return start
+
+
+class Routine:
+    def __init__(self):
+        pass
+
+    def run(self, drone: CarObject, agent: MyHivemind):
+        pass
+
+
+class Action(Enum):
+    Going = 0
+    Shadowing = 1
+    Boost = 2
+    Rotating = 3
+    Bumping = 4
+    Defending = 6
+    Nothing = 5

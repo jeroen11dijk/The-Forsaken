@@ -158,6 +158,21 @@ def closest_boost(agent: MyHivemind, location: Vector3, return_distance=False) -
         return closest
 
 
+def closest_foe(agent: MyHivemind, location: Vector3, return_distance=False) -> \
+        Union[CarObject, (CarObject, float)]:
+    closest = agent.foes[0]
+    closest_distance = (closest.location - location).magnitude()
+    for foe in agent.foes:
+        foe_distance = (foe.location - location).magnitude()
+        if foe_distance < closest_distance:
+            closest = foe
+            closest_distance = foe_distance
+    if return_distance:
+        return closest, closest_distance
+    else:
+        return closest
+
+
 def shot_valid(agent: MyHivemind, shot: Union[AerialShot, JumpShot], threshold: float = 45) -> bool:
     # Returns True if the ball is still where the shot anticipates it to be
     # First finds the two closest slices in the ball prediction to shot's intercept_time

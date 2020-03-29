@@ -8,7 +8,7 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket
 from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3
 
 # Dummy agent to call request MyHivemind.
-from gamemodes import run_3v3_hiveminds
+from gamemodes import run_3v3_hiveminds, run_1v1_hiveminds
 
 
 class Drone(DroneAgent):
@@ -43,6 +43,7 @@ class MyHivemind(PythonHivemind):
         self.ready: bool = False
         # a flag that tells us when kickoff is happening
         self.kickoff_flag: bool = False
+        self.prev_kickoff_flag: bool = False
 
         self.last_time: float = 0
         self.my_score: float = 0
@@ -96,12 +97,13 @@ class MyHivemind(PythonHivemind):
         self.game.update(packet)
         self.time = packet.game_info.seconds_elapsed
         # When a new kickoff begins we empty the stack
-        print(packet.game_info.is_kickoff_pause)
-        if not self.kickoff_flag and packet.game_info.is_kickoff_pause:
+        self.prev_kickoff_flag = self.kickoff_flag
+        self.kickoff_flag = packet.game_info.is_kickoff_pause
+        if not self.prev_kickoff_flag and self.kickoff_flag:
             for drone in self.drones:
                 drone.clear()
         # Tells us when to go for kickoff
-        self.kickoff_flag = packet.game_info.is_kickoff_pause
+
 
     def get_outputs(self, packet: GameTickPacket) -> Dict[int, PlayerInput]:
         # Get ready, then preprocess
@@ -134,7 +136,9 @@ class MyHivemind(PythonHivemind):
                 offset += 1
 
     def run(self):
-        if len(self.drones) < 3 or len(self.drones) > 3:
+        if len(self.drones) == 1 and len(self.friends) == 0:
+            run_1v1_hiveminds(self)
+        elif len(self.drones) < 3 or len(self.drones) > 3:
             print("At the moment we only support 3v3 with 3 hiveminds!")
         else:
             if len(self.friends) > 0:

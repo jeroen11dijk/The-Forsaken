@@ -3,13 +3,13 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING
 
-from objects import Vector3
-from utils import cap, in_field, post_correction, find_slope
+from objects import Vector3, Action
+from utils import cap, in_field, post_correction, find_slope, side
+import routines
 
 if TYPE_CHECKING:
     from hive import MyHivemind
     from objects import CarObject
-    from routines import AerialShot, JumpShot
 
 
 # This file is for strategic tools
@@ -85,11 +85,26 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
                             slope = find_slope(best_shot_vector, car_to_ball)
                             if forward_flag:
                                 if ball_location[2] <= 300 and slope > 0.0:
-                                    hits[pair].append(JumpShot(ball_location, intercept_time, best_shot_vector, slope))
+                                    hits[pair].append(routines.JumpShot(ball_location, intercept_time, best_shot_vector, slope))
                                 if 300 < ball_location[2] < 600 and slope > 1.0 and (
                                         ball_location[2] - 250) * 0.14 > drone.boost:
                                     hits[pair].append(
-                                        AerialShot(ball_location, intercept_time, best_shot_vector))
+                                        routines.AerialShot(ball_location, intercept_time, best_shot_vector))
                             elif backward_flag and ball_location[2] <= 280 and slope > 0.25:
-                                hits[pair].append(JumpShot(ball_location, intercept_time, best_shot_vector, slope, -1))
+                                hits[pair].append(routines.JumpShot(ball_location, intercept_time, best_shot_vector, slope, -1))
     return hits
+
+
+def push_shot(drone: CarObject, agent: MyHivemind):
+    left = Vector3(4200 * -side(agent.team), agent.ball.location.y + (1000 * -side(agent.team)), 0)
+    right = Vector3(4200 * side(agent.team), agent.ball.location.y + (1000 * -side(agent.team)), 0)
+    targets = {"goal": (agent.foe_goal.left_post, agent.foe_goal.right_post), "upfield": (left, right)}
+    shots = find_hits(drone, agent, targets)
+    if len(shots["goal"]) > 0:
+        drone.clear()
+        drone.push(shots["goal"][0])
+        drone.action = Action.Going
+    elif len(shots["upfield"]) > 0:
+        drone.clear()
+        drone.push(shots["upfield"][0])
+        drone.action = Action.Going
