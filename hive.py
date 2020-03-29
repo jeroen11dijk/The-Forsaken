@@ -8,7 +8,7 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket
 from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3
 
 # Dummy agent to call request MyHivemind.
-from gamemodes import run_3v3_hiveminds, run_1v1_hiveminds
+from gamemodes import run_3v3_hiveminds, run_1v1_hiveminds, run_podracers
 
 
 class Drone(DroneAgent):
@@ -104,7 +104,6 @@ class MyHivemind(PythonHivemind):
                 drone.clear()
         # Tells us when to go for kickoff
 
-
     def get_outputs(self, packet: GameTickPacket) -> Dict[int, PlayerInput]:
         # Get ready, then preprocess
         if not self.ready:
@@ -138,9 +137,9 @@ class MyHivemind(PythonHivemind):
     def run(self):
         if len(self.drones) == 1 and len(self.friends) == 0:
             run_1v1_hiveminds(self)
-        elif len(self.drones) < 3 or len(self.drones) > 3:
-            print("At the moment we only support 3v3 with 3 hiveminds!")
-        else:
-            if len(self.friends) > 0:
-                print("At the moment we only support 3v3 with 3 hiveminds, but we will play our 3v3 game")
+        elif len(self.drones) == 3 and len(self.friends) == 0:
             run_3v3_hiveminds(self)
+        elif len(self.drones) == 1 and len(self.friends) == 2:
+            run_podracers(self)
+        else:
+            print("Yeah idk what you are trying to do but this aint supported chief")

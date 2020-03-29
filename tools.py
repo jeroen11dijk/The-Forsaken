@@ -110,8 +110,12 @@ def push_shot(drone: CarObject, agent: MyHivemind):
         drone.action = Action.Going
 
 
-def setup_3s_kickoff(agent: MyHivemind):
-    x_pos = [round(drone.location.x) for drone in agent.drones]
+def setup_3s_kickoff(agent: MyHivemind, hivemind=True):
+    if hivemind:
+        x_pos = [round(drone.location.x) for drone in agent.drones]
+    else:
+        x_pos = [round(friend.location.x) for friend in agent.friends]
+        x_pos.append(round(agent.drones[0].location.x))
     if sorted(x_pos) in [[-2048, -256, 2048], [-2048, 0, 2048], [-2048, 256, 2048]]:
         for drone in agent.drones:
             if round(drone.location.x) == -2048:
