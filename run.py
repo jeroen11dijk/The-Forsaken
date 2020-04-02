@@ -13,7 +13,8 @@ if __name__ == '__main__':
             logger.log(logging_utils.logging_level,
                        'Skipping upgrade check for now since it looks like you have no internet')
         elif public_utils.is_safe_to_upgrade():
-            subprocess.call([sys.executable, "-m", "pip", "install", '-r', 'requirements.txt', '--upgrade', '--upgrade-strategy=eager'])
+            subprocess.call([sys.executable, "-m", "pip", "install", '-r', 'requirements.txt', '--upgrade',
+                             '--upgrade-strategy=eager'])
 
             # https://stackoverflow.com/a/44401013
             rlbots = [module for module in sys.modules if module.startswith('rlbot')]
@@ -21,7 +22,8 @@ if __name__ == '__main__':
                 sys.modules.pop(rlbot_module)
 
     except ImportError:
-        subprocess.call([sys.executable, "-m", "pip", "install", '-r', 'requirements.txt', '--upgrade', '--upgrade-strategy=eager'])
+        subprocess.call(
+            [sys.executable, "-m", "pip", "install", '-r', 'requirements.txt', '--upgrade', '--upgrade-strategy=eager'])
 
     try:
         if len(sys.argv) > 1 and sys.argv[1] == 'gui':

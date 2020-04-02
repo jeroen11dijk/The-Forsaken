@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from typing import TYPE_CHECKING
+
 from objects import Vector3, Routine
 from utils import cap, defaultPD, defaultThrottle, sign, backsolve, shot_valid
 

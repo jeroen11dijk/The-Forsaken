@@ -5,10 +5,10 @@ from rlbot.agents.hivemind.python_hivemind import PythonHivemind
 from rlbot.utils.structures.bot_input_struct import PlayerInput
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 
-from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3
-
 # Dummy agent to call request MyHivemind.
 from gamemodes import run_1v1, run_hivemind
+from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3
+from utils import distance
 
 
 class Drone(DroneAgent):
@@ -110,22 +110,10 @@ class MyHivemind(PythonHivemind):
         for foe in self.foes:
             foe.on_side = (foe.location - self.friend_goal.location).magnitude() < (
                     self.ball.location - self.friend_goal.location).magnitude()
-        team = self.friends + self.drones
-        on_side_teammates = []
-        for teammate in team:
-            teammate.closest = False
-            if teammate.on_side:
-                on_side_teammates.append(teammate)
-        if len(on_side_teammates) > 0:
-            closest_index = 0
-            closest_distance = (on_side_teammates[closest_index].location - self.ball.location).magnitude()
-            for i in range(len(on_side_teammates)):
-                if (on_side_teammates[i].location - self.ball.location).magnitude() < closest_distance:
-                    closest_index = i
-                    closest_distance = (on_side_teammates[i].location - self.ball.location).magnitude()
-            on_side_teammates[closest_index].closest = True
-
-
+        ball = self.ball.location
+        sorted_by_dist = sorted([*self.friends, *self.drones], key=lambda bot: distance(bot.location, ball))
+        sorted_by_dist_on_side = [bot for bot in sorted_by_dist if bot.on_side]
+        sorted_by_dist_on_side[0].closest = True if len(sorted_by_dist_on_side) > 0 else False
         self.conceding = False
         ball_prediction = self.get_ball_prediction_struct()
         for i in range(ball_prediction.num_slices):

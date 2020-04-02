@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import math
 from typing import TYPE_CHECKING
 from typing import Union
@@ -187,3 +188,7 @@ def shot_valid(agent: MyHivemind, shot: Union[AerialShot, JumpShot], threshold: 
     predicted_ball_location = Vector3(slices[soonest].physics.location) + (slopes * time_from_soonest)
     # Comparing predicted location with where the shot expects the ball to be
     return (shot.ball_location - predicted_ball_location).magnitude() < threshold
+
+
+def distance(a: Vector3, b: Vector3) -> float:
+    return (a - b).magnitude()

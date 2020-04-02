@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import time
 from copy import copy
 from typing import TYPE_CHECKING
 
 from objects import Action
-from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, Goto, CenterKickoff, Shadow
+from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow
 from tools import push_shot, setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
 from utils import closest_boost
 
@@ -80,4 +79,3 @@ def run_hivemind(agent: MyHivemind):
             elif drone.action == Action.Shadowing:
                 if drone.on_side and drone.closest or agent.conceding:
                     push_shot(drone, agent)
-

@@ -9,6 +9,7 @@ from rlbot.utils.structures.bot_input_struct import PlayerInput
 
 if TYPE_CHECKING:
     from rlbot.utils.structures.game_data_struct import GameTickPacket
+    from hive import MyHivemind
 
 
 class CarObject:
@@ -56,6 +57,7 @@ class CarObject:
         self.boost = car.boost
         # Reset controller
         self.controller = PlayerInput()
+        self.closest = False
 
     @property
     def forward(self) -> Vector3:
