@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING
 
 from objects import Action
 from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, Goto, CenterKickoff, Shadow
-from tools import find_hits, push_shot, setup_3s_kickoff
+from tools import push_shot, setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
 from utils import closest_boost
 
 if TYPE_CHECKING:
     from hive import MyHivemind
 
 
-def run_1v1_hiveminds(agent: MyHivemind):
+def run_1v1(agent: MyHivemind):
     agent.debug_stack()
     drone = agent.drones[0]
     if agent.kickoff_flag and len(drone.stack) < 1:
@@ -43,41 +43,33 @@ def run_1v1_hiveminds(agent: MyHivemind):
                     drone.action = Action.Shadowing
 
 
-def run_3v3_hiveminds(agent: MyHivemind):
+def run_hivemind(agent: MyHivemind):
     agent.debug_stack()
-    empty_stack = False
-    for drone in agent.drones:
-        if len(drone.stack) < 1:
-            empty_stack = True
-    if agent.kickoff_flag and empty_stack:
-        setup_3s_kickoff(agent)
+    if agent.kickoff_flag and all(len(drone.stack) < 1 for drone in agent.drones):
+        if len(agent.friends + agent.drones) == 3:
+            setup_3s_kickoff(agent)
+        elif len(agent.friends + agent.drones) == 2:
+            setup_2s_kickoff(agent)
+        else:
+            setup_other_kickoff(agent)
     elif not agent.kickoff_flag:
         for drone in agent.drones:
             drones = copy(agent.drones)
             drones.remove(drone)
-            ball_distance = (drone.location - agent.ball.location).magnitude()
-            if drones[0].on_side and drones[1].on_side:
-                closest = ball_distance < (drones[0].location - agent.ball.location).magnitude() and \
-                          ball_distance < (drones[1].location - agent.ball.location).magnitude()
-            elif drones[0].on_side:
-                closest = ball_distance < (drones[0].location - agent.ball.location).magnitude()
-            elif drones[1].on_side:
-                closest = ball_distance < (drones[1].location - agent.ball.location).magnitude()
-            else:
-                closest = True
+            team = agent.friends + drones
             if len(drone.stack) < 1:
                 if drone.action == Action.Going:
-                    if drone.on_side and closest or agent.conceding:
+                    if drone.on_side and drone.closest or agent.conceding:
                         push_shot(drone, agent)
                     if len(drone.stack) < 1:
-                        if drones[0].on_side and drones[1].on_side:
+                        if any(teammate.on_side for teammate in team):
                             drone.push(GotoBoost(closest_boost(agent, drone.location)))
                             drone.action = Action.Boost
                         else:
                             drone.push(Shadow(agent.ball.location))
                             drone.action = Action.Shadowing
                 elif drone.action == Action.Shadowing:
-                    if drone.on_side and closest or agent.conceding:
+                    if drone.on_side and drone.closest or agent.conceding:
                         push_shot(drone, agent)
                     if len(drone.stack) < 1:
                         drone.push(Shadow(agent.ball.location))
@@ -86,50 +78,6 @@ def run_3v3_hiveminds(agent: MyHivemind):
                     drone.push(Shadow(agent.ball.location))
                     drone.action = Action.Shadowing
             elif drone.action == Action.Shadowing:
-                if drone.on_side and closest or agent.conceding:
+                if drone.on_side and drone.closest or agent.conceding:
                     push_shot(drone, agent)
 
-
-def run_podracers(agent: MyHivemind):
-    agent.debug_stack()
-    drone = agent.drones[0]
-    if agent.kickoff_flag and len(drone.stack) < 1:
-        setup_3s_kickoff(agent, False)
-    elif not agent.kickoff_flag:
-        team0_on_side = (agent.friends[0].location - agent.friend_goal.location).magnitude() < (
-                    agent.ball.location - agent.friend_goal.location).magnitude()
-        team1_on_side = (agent.friends[1].location - agent.friend_goal.location).magnitude() < (
-                    agent.ball.location - agent.friend_goal.location).magnitude()
-        ball_distance = (drone.location - agent.ball.location).magnitude()
-        if team0_on_side and team1_on_side:
-            closest = ball_distance < (agent.friends[0].location - agent.ball.location).magnitude() and \
-                  ball_distance < (agent.friends[1].location - agent.ball.location).magnitude()
-        elif team0_on_side:
-            closest = ball_distance < (agent.friends[0].location - agent.ball.location).magnitude()
-        elif team1_on_side:
-            closest = ball_distance < (agent.friends[1].location - agent.ball.location).magnitude()
-        else:
-            closest = True
-        if len(drone.stack) < 1:
-            if drone.action == Action.Going:
-                if drone.on_side and closest or agent.conceding:
-                    push_shot(drone, agent)
-                if len(drone.stack) < 1:
-                    if team0_on_side and team1_on_side:
-                        drone.push(GotoBoost(closest_boost(agent, drone.location)))
-                        drone.action = Action.Boost
-                    else:
-                        drone.push(Shadow(agent.ball.location))
-                        drone.action = Action.Shadowing
-            elif drone.action == Action.Shadowing:
-                if drone.on_side and closest or agent.conceding:
-                    push_shot(drone, agent)
-                if len(drone.stack) < 1:
-                    drone.push(Shadow(agent.ball.location))
-                    drone.action = Action.Shadowing
-            elif drone.action == Action.Boost:
-                drone.push(Shadow(agent.ball.location))
-                drone.action = Action.Shadowing
-        elif drone.action == Action.Shadowing:
-            if drone.on_side and closest or agent.conceding:
-                push_shot(drone, agent)

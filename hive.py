@@ -8,7 +8,7 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket
 from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3
 
 # Dummy agent to call request MyHivemind.
-from gamemodes import run_3v3_hiveminds, run_1v1_hiveminds, run_podracers
+from gamemodes import run_1v1, run_hivemind
 
 
 class Drone(DroneAgent):
@@ -29,7 +29,6 @@ class MyHivemind(PythonHivemind):
         self.foes: [CarObject] = []
         # This holds the carobjects for our agent
         self.drones: [CarObject] = []
-        self.closest_drone: CarObject = None
         self.ball: BallObject = BallObject()
         self.game: GameObject = GameObject()
         # A list of boosts
@@ -105,8 +104,28 @@ class MyHivemind(PythonHivemind):
         for drone in self.drones:
             drone.on_side = (drone.location - self.friend_goal.location).magnitude() < (
                     self.ball.location - self.friend_goal.location).magnitude()
-        distances = [(drone.location - self.ball.location).magnitude() for drone in self.drones]
-        self.closest_drone = self.drones[distances.index(min(distances))]
+        for friend in self.friends:
+            friend.on_side = (friend.location - self.friend_goal.location).magnitude() < (
+                    self.ball.location - self.friend_goal.location).magnitude()
+        for foe in self.foes:
+            foe.on_side = (foe.location - self.friend_goal.location).magnitude() < (
+                    self.ball.location - self.friend_goal.location).magnitude()
+        team = self.friends + self.drones
+        on_side_teammates = []
+        for teammate in team:
+            teammate.closest = False
+            if teammate.on_side:
+                on_side_teammates.append(teammate)
+        if len(on_side_teammates) > 0:
+            closest_index = 0
+            closest_distance = (on_side_teammates[closest_index].location - self.ball.location).magnitude()
+            for i in range(len(on_side_teammates)):
+                if (on_side_teammates[i].location - self.ball.location).magnitude() < closest_distance:
+                    closest_index = i
+                    closest_distance = (on_side_teammates[i].location - self.ball.location).magnitude()
+            on_side_teammates[closest_index].closest = True
+
+
         self.conceding = False
         ball_prediction = self.get_ball_prediction_struct()
         for i in range(ball_prediction.num_slices):
@@ -149,13 +168,9 @@ class MyHivemind(PythonHivemind):
 
     def run(self):
         if len(self.drones) == 1 and len(self.friends) == 0:
-            run_1v1_hiveminds(self)
-        elif len(self.drones) == 3 and len(self.friends) == 0:
-            run_3v3_hiveminds(self)
-        elif len(self.drones) == 1 and len(self.friends) == 2:
-            run_podracers(self)
+            run_1v1(self)
         else:
-            print("Yeah idk what you are trying to do but this aint supported chief")
+            run_hivemind(self)
 
     def side(self) -> float:
         # returns -1 for blue team and 1 for orange team

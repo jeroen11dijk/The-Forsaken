@@ -30,8 +30,9 @@ class CarObject:
         self.controller: PlayerInput = PlayerInput()
         # A list that acts as the routines stack
         self.stack: [] = []
-        self.action: Action = Action.Nothing
-        self.on_side = False
+        self.action: Action = Action.Shadowing
+        self.on_side: bool = False
+        self.closest: bool = False
         if packet is not None:
             self.team = packet.game_cars[self.index].team
             self.update(packet)

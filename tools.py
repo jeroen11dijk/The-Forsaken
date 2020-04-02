@@ -110,12 +110,46 @@ def push_shot(drone: CarObject, agent: MyHivemind):
         drone.action = Action.Going
 
 
-def setup_3s_kickoff(agent: MyHivemind, hivemind=True):
-    if hivemind:
-        x_pos = [round(drone.location.x) for drone in agent.drones]
-    else:
-        x_pos = [round(friend.location.x) for friend in agent.friends]
-        x_pos.append(round(agent.drones[0].location.x))
+def setup_2s_kickoff(agent: MyHivemind):
+    x_pos = [round(drone.location.x) for drone in agent.drones]
+    x_pos.extend([round(friend.location.x) for friend in agent.friends])
+    if sorted(x_pos) in [[-2048, 2048]]:
+        for drone in agent.drones:
+            if round(drone.location.x) == -2048:
+                drone.push(DiagonalKickoff())
+                drone.action = Action.Going
+            elif round(drone.location.x) == 2048:
+                drone.push(Shadow(agent.ball.location))
+                drone.action = Action.Shadowing
+    elif sorted(x_pos) in [[-256, 256]]:
+        for drone in agent.drones:
+            if round(drone.location.x) == -256:
+                drone.push(OffCenterKickoff())
+                drone.action = Action.Going
+            elif round(drone.location.x) == 256:
+                drone.push(Shadow(agent.ball.location))
+                drone.action = Action.Shadowing
+    elif -2048 in x_pos or 2048 in x_pos:
+        for drone in agent.drones:
+            if round(abs(drone.location.x)) == 2048:
+                drone.push(DiagonalKickoff())
+                drone.action = Action.Going
+            else:
+                drone.push(Shadow(agent.ball.location))
+                drone.action = Action.Shadowing
+    elif -256 in x_pos or 256 in x_pos:
+        for drone in agent.drones:
+            if round(abs(drone.location.x)) == 256:
+                drone.push(OffCenterKickoff())
+                drone.action = Action.Going
+            else:
+                drone.push(Shadow(agent.ball.location))
+                drone.action = Action.Shadowing
+
+
+def setup_3s_kickoff(agent: MyHivemind):
+    x_pos = [round(drone.location.x) for drone in agent.drones]
+    x_pos.extend([round(friend.location.x) for friend in agent.friends])
     if sorted(x_pos) in [[-2048, -256, 2048], [-2048, 0, 2048], [-2048, 256, 2048]]:
         for drone in agent.drones:
             if round(drone.location.x) == -2048:
@@ -156,3 +190,22 @@ def setup_3s_kickoff(agent: MyHivemind, hivemind=True):
                 else:
                     drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
                     drone.action = Action.Boost
+
+
+def setup_other_kickoff(agent: MyHivemind):
+    x_pos = [round(drone.location.x) for drone in agent.drones]
+    x_pos.extend([round(friend.location.x) for friend in agent.friends])
+    for drone in agent.drones:
+        if round(drone.location.x) == -2048:
+            drone.push(DiagonalKickoff())
+            drone.action = Action.Going
+        elif round(drone.location.x) == 2048:
+            if -2048 in x_pos:
+                drone.push(Shadow(agent.ball.location))
+                drone.action = Action.Shadowing
+            else:
+                drone.push(DiagonalKickoff())
+                drone.action = Action.Going
+        else:
+            drone.push(Shadow(agent.ball.location))
+            drone.action = Action.Shadowing
