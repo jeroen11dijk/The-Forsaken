@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING
 from objects import Vector3, Routine
-from utils import cap, defaultPD, defaultThrottle, sign, backsolve, shot_valid, side
+from utils import cap, defaultPD, defaultThrottle, sign, backsolve, shot_valid
 
 if TYPE_CHECKING:
     from hive import MyHivemind
@@ -505,7 +505,7 @@ class CenterKickoff(Routine):
         super().__init__()
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        target = Vector3(0, 3800 * side(agent.team), 0)
+        target = Vector3(0, 3800 * agent.side(), 0)
         local_target = drone.local(target - drone.location)
         defaultPD(drone, local_target)
         defaultThrottle(drone, 2300)
@@ -520,7 +520,7 @@ class OffCenterKickoff(Routine):
         super().__init__()
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        target = Vector3(0, 3116 * side(agent.team), 0)
+        target = Vector3(0, 3116 * agent.side(), 0)
         local_target = drone.local(target - drone.location)
         defaultPD(drone, local_target)
         defaultThrottle(drone, 2300)
@@ -535,7 +535,7 @@ class DiagonalKickoff(Routine):
         super().__init__()
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        target = agent.ball.location + Vector3(0, 200 * side(agent.team), 0)
+        target = agent.ball.location + Vector3(0, 200 * agent.side(), 0)
         local_target = drone.local(target - drone.location)
         defaultPD(drone, local_target)
         defaultThrottle(drone, 2300)

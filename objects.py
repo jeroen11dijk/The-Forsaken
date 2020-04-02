@@ -31,6 +31,7 @@ class CarObject:
         # A list that acts as the routines stack
         self.stack: [] = []
         self.action: Action = Action.Nothing
+        self.on_side = False
         if packet is not None:
             self.team = packet.game_cars[self.index].team
             self.update(packet)

@@ -106,13 +106,6 @@ def quadratic(a: float, b: float, c: float) -> (float, float):
         return -1, -1
 
 
-def side(x: float) -> float:
-    # returns -1 for blue team and 1 for orange team
-    if x == 0:
-        return -1
-    return 1
-
-
 def sign(x: float) -> float:
     # returns the sign of a number, -1, 0, +1
     if x < 0.0:

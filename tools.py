@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from objects import Vector3, Action
 from routines import OffCenterKickoff, GotoBoost, Shadow, DiagonalKickoff, JumpShot, AerialShot
-from utils import cap, in_field, post_correction, find_slope, side, closest_boost
+from utils import cap, in_field, post_correction, find_slope, closest_boost
 
 if TYPE_CHECKING:
     from hive import MyHivemind
@@ -96,8 +96,8 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
 
 
 def push_shot(drone: CarObject, agent: MyHivemind):
-    left = Vector3(4200 * -side(agent.team), agent.ball.location.y + (1000 * -side(agent.team)), 0)
-    right = Vector3(4200 * side(agent.team), agent.ball.location.y + (1000 * -side(agent.team)), 0)
+    left = Vector3(4200 * -agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
+    right = Vector3(4200 * agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
     targets = {"goal": (agent.foe_goal.left_post, agent.foe_goal.right_post), "upfield": (left, right)}
     shots = find_hits(drone, agent, targets)
     if len(shots["goal"]) > 0:

@@ -29,7 +29,7 @@ class MyHivemind(PythonHivemind):
         self.foes: [CarObject] = []
         # This holds the carobjects for our agent
         self.drones: [CarObject] = []
-
+        self.closest_drone: CarObject = None
         self.ball: BallObject = BallObject()
         self.game: GameObject = GameObject()
         # A list of boosts
@@ -44,7 +44,7 @@ class MyHivemind(PythonHivemind):
         # a flag that tells us when kickoff is happening
         self.kickoff_flag: bool = False
         self.prev_kickoff_flag: bool = False
-
+        self.conceding: bool = False
         self.last_time: float = 0
         self.my_score: float = 0
         self.foe_score: float = 0
@@ -102,6 +102,19 @@ class MyHivemind(PythonHivemind):
         if not self.prev_kickoff_flag and self.kickoff_flag:
             for drone in self.drones:
                 drone.clear()
+        for drone in self.drones:
+            drone.on_side = (drone.location - self.friend_goal.location).magnitude() < (
+                    self.ball.location - self.friend_goal.location).magnitude()
+        distances = [(drone.location - self.ball.location).magnitude() for drone in self.drones]
+        self.closest_drone = self.drones[distances.index(min(distances))]
+        self.conceding = False
+        ball_prediction = self.get_ball_prediction_struct()
+        for i in range(ball_prediction.num_slices):
+            prediction_slice = ball_prediction.slices[i]
+            physics = prediction_slice.physics
+            if physics.location.y * self.side() > 5120:
+                self.conceding = True
+                break
         # Tells us when to go for kickoff
 
     def get_outputs(self, packet: GameTickPacket) -> Dict[int, PlayerInput]:
@@ -143,3 +156,9 @@ class MyHivemind(PythonHivemind):
             run_podracers(self)
         else:
             print("Yeah idk what you are trying to do but this aint supported chief")
+
+    def side(self) -> float:
+        # returns -1 for blue team and 1 for orange team
+        if self.team == 0:
+            return -1
+        return 1
