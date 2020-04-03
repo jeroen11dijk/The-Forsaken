@@ -40,6 +40,9 @@ def run_1v1(agent: MyHivemind):
                 if len(drone.stack) < 1:
                     drone.push(Shadow(agent.ball.location))
                     drone.action = Action.Shadowing
+        elif drone.action == Action.Shadowing:
+            if drone.on_side or agent.conceding:
+                push_shot(drone, agent)
 
 
 def run_hivemind(agent: MyHivemind):

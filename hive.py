@@ -1,5 +1,4 @@
 from typing import Dict
-import random
 from rlbot.agents.hivemind.drone_agent import DroneAgent
 from rlbot.agents.hivemind.python_hivemind import PythonHivemind
 from rlbot.utils.structures.bot_input_struct import PlayerInput
