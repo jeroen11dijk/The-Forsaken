@@ -1,3 +1,4 @@
+import traceback
 from typing import Dict
 from rlbot.agents.hivemind.drone_agent import DroneAgent
 from rlbot.agents.hivemind.python_hivemind import PythonHivemind
@@ -161,7 +162,7 @@ class MyHivemind(PythonHivemind):
             else:
                 run_hivemind(self)
         except:
-            pass
+            traceback.print_exc()
 
     def side(self) -> float:
         # returns -1 for blue team and 1 for orange team
