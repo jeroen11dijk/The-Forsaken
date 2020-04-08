@@ -295,7 +295,7 @@ class Shadow(Routine):
         self.direction = direction
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        target = agent.friend_goal.location + (agent.ball.location - agent.friend_goal.location) / 2
+        target = agent.friend_goal.location + 2*(agent.ball.location - agent.friend_goal.location) / 3
         car_to_target = target - drone.location
         distance_remaining = car_to_target.flatten().magnitude()
 

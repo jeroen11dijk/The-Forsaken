@@ -59,26 +59,20 @@ def run_hivemind(agent: MyHivemind):
             drones = copy(agent.drones)
             drones.remove(drone)
             team = agent.friends + drones
+            if len(drone.stack) < 1 or drone.action == Action.Shadowing:
+                if drone.on_side and drone.closest or agent.conceding:
+                    push_shot(drone, agent)
             if len(drone.stack) < 1:
                 if drone.action == Action.Going:
-                    if drone.on_side and drone.closest or agent.conceding:
-                        push_shot(drone, agent)
-                    if len(drone.stack) < 1:
-                        if any(teammate.on_side for teammate in team):
-                            drone.push(GotoBoost(closest_boost(agent, drone.location)))
-                            drone.action = Action.Boost
-                        else:
-                            drone.push(Shadow(agent.ball.location))
-                            drone.action = Action.Shadowing
-                elif drone.action == Action.Shadowing:
-                    if drone.on_side and drone.closest or agent.conceding:
-                        push_shot(drone, agent)
-                    if len(drone.stack) < 1:
+                    if any(teammate.on_side for teammate in team):
+                        drone.push(GotoBoost(closest_boost(agent, drone.location)))
+                        drone.action = Action.Boost
+                    else:
                         drone.push(Shadow(agent.ball.location))
                         drone.action = Action.Shadowing
+                elif drone.action == Action.Shadowing:
+                    drone.push(Shadow(agent.ball.location))
+                    drone.action = Action.Shadowing
                 elif drone.action == Action.Boost:
                     drone.push(Shadow(agent.ball.location))
                     drone.action = Action.Shadowing
-            elif drone.action == Action.Shadowing:
-                if drone.on_side and drone.closest or agent.conceding:
-                    push_shot(drone, agent)
