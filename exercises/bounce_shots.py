@@ -1,5 +1,7 @@
 import math
+from pathlib import Path
 
+from rlbot.matchconfig.match_config import PlayerConfig, Team
 from rlbot.utils.game_state_util import GameState, BallState, CarState, Physics, Vector3, Rotator
 from rlbottraining.common_exercises.common_base_exercises import StrikerExercise
 from rlbottraining.rng import SeededRandomNumberGenerator
@@ -70,8 +72,16 @@ class BouncingShotAngled(StrikerExercise):
 
 
 def make_default_playlist() -> Playlist:
-    return [
-        BouncingShotTowardsAgent('Bouncing towards'),
-        BouncingShotAwayFromAgent('Bouncing away'),
+    exercises = [
+        # BouncingShotTowardsAgent('Bouncing towards'),
+        # BouncingShotAwayFromAgent('Bouncing away'),
         BouncingShotAngled('Angled bounce shot')
     ]
+    for ex in exercises:
+        # The length of players in the match_config needs to match the number or spawns.
+
+        # Replace with path to your bot or bots.
+        ex.match_config.player_configs = [
+            PlayerConfig.bot_config(Path(__file__).absolute().parent.parent / 'Lanfear.cfg', Team.BLUE)]
+
+    return exercises

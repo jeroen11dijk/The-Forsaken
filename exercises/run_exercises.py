@@ -9,9 +9,9 @@ from rlbottraining.common_exercises.silver_striker import HookShot
 def make_default_playlist() -> Playlist:
     # Choose which spawns you want to test.
     exercises = [
-        RollingTowardsGoalShot('Rolling Shot'),
-        HookShot('Hookshot'),
-        FacingAwayFromBallInFrontOfGoal('Facing away from opponents goal', car_start_x=200., car_start_y=5100),
+        DefendBallRollingTowardsGoal('DefendBallRollingTowardsGoal'),
+        LineSave('LineSave'),
+        TryNotToOwnGoal('TryNotToOwnGoal'),
     ]
 
     for ex in exercises:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+import time
+from copy import copy
 from typing import TYPE_CHECKING
 
 from objects import Vector3, Action
@@ -98,12 +100,35 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
 def push_shot(drone: CarObject, agent: MyHivemind):
     left = Vector3(4200 * -agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
     right = Vector3(4200 * agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
-    targets = {"goal": (agent.foe_goal.left_post, agent.foe_goal.right_post), "upfield": (left, right)}
+    targets = {"goal": (agent.foe_goal.left_post, agent.foe_goal.right_post)}
+    drones = copy(agent.drones)
+    drones.remove(drone)
+    team = agent.friends + drones
+    for teammate in team:
+        a = teammate.location
+        b = teammate.location + 2000*teammate.forward
+        local_a = drone.local(a)
+        angle_a = math.atan2(local_a.y, local_a.x)
+        if angle_a > 0:
+            targets["teammate" + str(team.index(teammate))] = (b, a)
+        else:
+            targets["teammate" + str(team.index(teammate))] = (a, b)
+    targets["upfield"] = (left, right)
     shots = find_hits(drone, agent, targets)
     if len(shots["goal"]) > 0:
         drone.clear()
         drone.push(shots["goal"][0])
         drone.action = Action.Going
+    elif len(shots["teammate0"]) > 0:
+        drone.clear()
+        drone.push(shots["teammate0"][0])
+        drone.action = Action.Going
+        print("PASSING!0")
+    elif len(shots["teammate1"]) > 0:
+        drone.clear()
+        drone.push(shots["teammate1"][0])
+        drone.action = Action.Going
+        print("PASSING!1")
     elif len(shots["upfield"]) > 0:
         drone.clear()
         drone.push(shots["upfield"][0])

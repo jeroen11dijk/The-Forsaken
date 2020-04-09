@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import math
 from copy import copy
 from typing import TYPE_CHECKING
 
-from objects import Action
-from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow
+from objects import Action, Vector3
+from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow, Goto
 from tools import push_shot, setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
 from utils import closest_boost
 
@@ -26,23 +27,12 @@ def run_1v1(agent: MyHivemind):
             drone.push(DiagonalKickoff())
             drone.action = Action.Going
     elif not agent.kickoff_flag:
-        on_side = (drone.location - agent.friend_goal.location).magnitude() < (
-                agent.ball.location - agent.friend_goal.location).magnitude()
-        if len(drone.stack) < 1:
-            if drone.action == Action.Going:
-                if on_side and (drone.location - agent.ball.location).magnitude() < 2000:
-                    push_shot(drone, agent)
-                if len(drone.stack) < 1:
-                    drone.push(Shadow(agent.ball.location))
-                    drone.action = Action.Shadowing
-            elif drone.action == Action.Shadowing:
-                push_shot(drone, agent)
-                if len(drone.stack) < 1:
-                    drone.push(Shadow(agent.ball.location))
-                    drone.action = Action.Shadowing
-        elif drone.action == Action.Shadowing:
+        if len(drone.stack) < 1 or drone.action == Action.Shadowing:
             if drone.on_side or agent.conceding:
                 push_shot(drone, agent)
+        if len(drone.stack) < 1:
+                drone.push(Shadow(agent.ball.location))
+                drone.action = Action.Shadowing
 
 
 def run_hivemind(agent: MyHivemind):

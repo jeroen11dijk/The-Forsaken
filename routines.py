@@ -10,8 +10,24 @@ if TYPE_CHECKING:
     from hive import MyHivemind
     from objects import CarObject, BoostObject
 
+gravity: Vector3 = Vector3(0, 0, -650)
+
+# Aerial constants
+max_speed: float = 2300
+boost_accel: float = 1060
+throttle_accel: float = 200 / 3
+boost_per_second: float = 30
+
+# Jump constants
+
+jump_speed: float = 291.667
+jump_acc = 1458.3333
+jump_min_duration = 0.025
+jump_max_duration = 0.2
+
 
 # This file holds all of the mechanical tasks, called "routines", that the bot can do
+
 
 class Atba(Routine):
     # An example routine that just drives towards the ball at max speed
@@ -23,6 +39,92 @@ class Atba(Routine):
         local_target = drone.local(relative_target)
         defaultPD(drone, local_target)
         defaultThrottle(drone, 2300)
+
+
+class Aerial(Routine):
+
+    def __init__(self, ball_location: Vector3, intercept_time: float, on_ground: bool, up: Vector3 = Vector3(0, 0, 1)):
+        super().__init__()
+        self.ball_location = ball_location
+        self.intercept_time = intercept_time
+        self.jumping = on_ground
+        self.time = -1
+        self.jump_time = -1
+        self.up = up
+
+    def run(self, drone: CarObject, agent: MyHivemind):
+        if self.time == -1:
+            elapsed = 0
+            self.time = agent.time
+        else:
+            elapsed = agent.time - self.time
+        T = self.intercept_time - elapsed
+        xf = drone.location + drone.velocity * T + 0.5 * gravity * T ** 2
+        vf = drone.velocity + gravity * T
+        jumping_prev = self.jumping
+        if self.jumping:
+            if self.jump_time == -1:
+                jump_elapsed = 0
+                self.jump_time = agent.time
+            else:
+                jump_elapsed = agent.time - self.jump_time
+            tau = jump_max_duration - jump_elapsed
+            if jump_elapsed == 0:
+                vf += drone.up * jump_speed
+                xf += drone.up * jump_speed * T
+
+            vf += drone.up * jump_acc * tau
+            xf += drone.up * jump_acc * tau * (T - 0.5 * tau)
+
+            vf += drone.up * jump_speed
+            xf += drone.up * jump_speed * (T - tau)
+
+            drone.controller.jump = 1 if jump_elapsed <= jump_max_duration else 0
+
+            self.jumping = jump_elapsed <= jump_max_duration
+        else:
+            drone.controller.jump = 0
+
+        delta_x = self.ball_location - xf
+        direction = delta_x.normalize()
+
+        if delta_x.magnitude() > 50:
+            defaultPD(drone, drone.local(delta_x))
+        else:
+            defaultPD(drone, drone.local(self.ball_location - drone.location))
+
+        if jumping_prev and not self.jumping:
+            drone.controller.roll = 0
+            drone.controller.pitch = 0
+            drone.controller.yaw = 0
+
+        if drone.forward.angle(direction) < 0.3:
+            if delta_x.magnitude() > 50:
+                drone.controller.boost = 1
+                drone.controller.throttle = 0
+            else:
+                drone.controller.boost = 0
+                drone.controller.throttle = cap(0.5 * throttle_accel * T ** 2, 0, 1)
+        else:
+            drone.controller.boost = 0
+            drone.controller.throttle = 0
+
+        if T <= 0 or not shot_valid(agent, self):
+            drone.pop()
+
+    def is_viable(self, drone: CarObject, agent: MyHivemind):
+        T = self.intercept_time
+        xf = drone.location + drone.velocity * T + 0.5 * gravity * T ** 2
+        vf = drone.velocity + gravity * T
+        if not drone.airborne:
+            vf += drone.up * (2 * jump_speed + jump_acc * jump_max_duration)
+            xf += drone.up * (jump_speed * (2 * T - jump_max_duration) + jump_acc * (
+                        T * jump_max_duration - 0.5 * jump_max_duration ** 2))
+
+        delta_x = self.ball_location - xf
+        f = delta_x.normalize()
+
+
 
 
 class AerialShot(Routine):
@@ -295,7 +397,7 @@ class Shadow(Routine):
         self.direction = direction
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        target = agent.friend_goal.location + 2*(agent.ball.location - agent.friend_goal.location) / 3
+        target = agent.friend_goal.location + 2 * (agent.ball.location - agent.friend_goal.location) / 3
         car_to_target = target - drone.location
         distance_remaining = car_to_target.flatten().magnitude()
 
