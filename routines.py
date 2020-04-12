@@ -112,19 +112,29 @@ class Aerial(Routine):
         if T <= 0 or not shot_valid(agent, self):
             drone.pop()
 
-    def is_viable(self, drone: CarObject, agent: MyHivemind):
+    def is_viable(self, drone: CarObject):
         T = self.intercept_time
         xf = drone.location + drone.velocity * T + 0.5 * gravity * T ** 2
         vf = drone.velocity + gravity * T
         if not drone.airborne:
             vf += drone.up * (2 * jump_speed + jump_acc * jump_max_duration)
             xf += drone.up * (jump_speed * (2 * T - jump_max_duration) + jump_acc * (
-                        T * jump_max_duration - 0.5 * jump_max_duration ** 2))
+                    T * jump_max_duration - 0.5 * jump_max_duration ** 2))
 
         delta_x = self.ball_location - xf
         f = delta_x.normalize()
+        phi = f.angle(drone.forward)
+        turn_time = 0.7 * (2 * math.sqrt(phi / 9))
 
-
+        tau1 = turn_time * cap(1 - 0.3 / phi, 0, 1)
+        required_acc = (2 * delta_x.magnitude()) / ((T - tau1) ** 2)
+        ratio = required_acc / boost_accel
+        tau2 = T - (T - tau1) * math.sqrt(1 - cap(ratio, 0, 1))
+        velocity_estimate = vf + boost_accel * (tau2 - tau1) * f
+        boos_estimate = (tau2 - tau1) * 30
+        enough_boost = boos_estimate < 0.95 * drone.boost
+        enough_time = abs(ratio) < 0.9
+        return velocity_estimate.magnitude() < 0.9 * max_speed and enough_boost and enough_time
 
 
 class AerialShot(Routine):

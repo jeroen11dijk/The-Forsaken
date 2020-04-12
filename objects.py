@@ -363,3 +363,10 @@ class Action(Enum):
     Bumping = 4
     Defending = 6
     Nothing = 5
+
+
+class TestState(Enum):
+    Reset = 0
+    Wait = 1
+    Init = 2
+    Running = 3
