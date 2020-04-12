@@ -48,6 +48,7 @@ class MyHivemind(PythonHivemind):
         self.my_score: float = 0
         self.foe_score: float = 0
         self.test_state = TestState.Reset
+        self.test_time = 0
 
     def initialize_hive(self, packet: GameTickPacket) -> None:
         # Find out team by looking at packet.

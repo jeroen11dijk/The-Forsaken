@@ -74,7 +74,7 @@ def run_hivemind(agent: MyHivemind):
 def run_test(agent: MyHivemind):
     next_state = agent.test_state
     if agent.test_state == TestState.Reset:
-        agent.time = 0
+        agent.test_time = agent.time
 
         b_position = RLBot3(random.uniform(-1500, 1500),
                              random.uniform(2500, 3500),
@@ -110,7 +110,7 @@ def run_test(agent: MyHivemind):
 
         next_state = TestState.Wait
     elif agent.test_state == TestState.Wait:
-        if agent.time > 0.2:
+        if agent.time - agent.test_time > 0.2:
             next_state = TestState.Init
     elif agent.test_state == TestState.Init:
         ball_prediction = agent.get_ball_prediction_struct()
@@ -126,7 +126,7 @@ def run_test(agent: MyHivemind):
                     break
         next_state = TestState.Running
     elif agent.test_state == TestState.Running:
-        if agent.time > 5:
+        if agent.time - agent.test_time > 5:
             next_state = TestState.Reset
             agent.drones[0].clear()
     agent.test_state = next_state
