@@ -118,7 +118,7 @@ def run_test(agent: MyHivemind):
             prediction_slice = ball_prediction.slices[i]
             physics = prediction_slice.physics
             ball_location = Vector3(physics.location.x, physics.location.y, physics.location.z)
-            intercept_time = i * 60
+            intercept_time = i / 60
             if ball_location.z > 600:
                 aerial = Aerial(ball_location, intercept_time, True)
                 if aerial.is_viable(agent.drones[0]):

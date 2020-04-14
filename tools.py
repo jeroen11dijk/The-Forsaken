@@ -119,12 +119,12 @@ def push_shot(drone: CarObject, agent: MyHivemind):
         drone.clear()
         drone.push(shots["goal"][0])
         drone.action = Action.Going
-    elif len(shots["teammate0"]) > 0:
+    elif shots.get("teammate0") is not None and len(shots.get("teammate0")) > 0:
         drone.clear()
         drone.push(shots["teammate0"][0])
         drone.action = Action.Going
         print("PASSING!0")
-    elif len(shots["teammate1"]) > 0:
+    elif shots.get("teammate1") is not None and len(shots.get("teammate1")) > 0:
         drone.clear()
         drone.push(shots["teammate1"][0])
         drone.action = Action.Going
