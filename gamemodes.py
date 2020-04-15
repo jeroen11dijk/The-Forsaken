@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
+import time
 from typing import TYPE_CHECKING
 import random
 
@@ -72,6 +73,7 @@ def run_hivemind(agent: MyHivemind):
 
 
 def run_test(agent: MyHivemind):
+    agent.debug_stack()
     next_state = agent.test_state
     if agent.test_state == TestState.Reset:
         agent.test_time = agent.time
@@ -82,7 +84,7 @@ def run_test(agent: MyHivemind):
 
         b_velocity = RLBot3(random.uniform(-300, 300),
                              random.uniform(-100, 100),
-                             random.uniform(1000, 1500))
+                             random.uniform(900, 1000))
 
         ball_state = BallState(physics=Physics(
             location=b_position,
@@ -113,18 +115,20 @@ def run_test(agent: MyHivemind):
         if agent.time - agent.test_time > 0.2:
             next_state = TestState.Init
     elif agent.test_state == TestState.Init:
+        a = time.time()
         ball_prediction = agent.get_ball_prediction_struct()
-        for i in range(ball_prediction.num_slices):
+        for i in range(1, ball_prediction.num_slices):
             prediction_slice = ball_prediction.slices[i]
             physics = prediction_slice.physics
             ball_location = Vector3(physics.location.x, physics.location.y, physics.location.z)
             intercept_time = i / 60
             if ball_location.z > 600:
-                aerial = Aerial(ball_location, intercept_time, True)
+                aerial = Aerial(ball_location, intercept_time, True, target=agent.friend_goal.location)
                 if aerial.is_viable(agent.drones[0]):
                     agent.drones[0].push(aerial)
                     break
         next_state = TestState.Running
+        print(time.time() - a)
     elif agent.test_state == TestState.Running:
         if agent.time - agent.test_time > 5:
             next_state = TestState.Reset

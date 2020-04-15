@@ -54,7 +54,7 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
             direction, distance = car_to_ball.normalize(True)
 
             # How far the car must turn in order to face the ball, for forward and reverse
-            forward_angle = direction.angle(drone.forward)
+            forward_angle = direction.angle2D(drone.forward)
             backward_angle = math.pi - forward_angle
 
             # Accounting for the average time it takes to turn and face the ball

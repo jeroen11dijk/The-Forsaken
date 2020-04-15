@@ -158,15 +158,15 @@ class MyHivemind(PythonHivemind):
                 offset += 1
 
     def run(self):
-        # if self.game.round_active:
-        #     run_test(self)
-        try:
-            if len(self.drones) == 1 and len(self.friends) == 0:
-                run_1v1(self)
-            else:
-                run_hivemind(self)
-        except:
-            traceback.print_exc()
+        if self.game.round_active:
+            run_test(self)
+        # try:
+        #     if len(self.drones) == 1 and len(self.friends) == 0:
+        #         run_1v1(self)
+        #     else:
+        #         run_hivemind(self)
+        # except:
+        #     traceback.print_exc()
 
     def side(self) -> float:
         # returns -1 for blue team and 1 for orange team

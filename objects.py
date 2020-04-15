@@ -323,9 +323,13 @@ class Vector3:
         # Returns a copy of this Vector3
         return Vector3(self.data[:])
 
-    def angle(self, value: Vector3) -> float:
+    def angle2D(self, value: Vector3) -> float:
         # Returns the angle between this Vector3 and another Vector3
         return math.acos(round(self.flatten().normalize().dot(value.flatten().normalize()), 4))
+
+    def angle3D(self, value: Vector3) -> float:
+        # Returns the angle between this Vector3 and another Vector3
+        return math.acos(round(self.normalize().dot(value.normalize()), 4))
 
     def rotate(self, angle: float) -> Vector3:
         # Rotates this Vector3 by the given angle in radians
