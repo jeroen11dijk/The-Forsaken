@@ -123,7 +123,7 @@ def run_test(agent: MyHivemind):
             ball_location = Vector3(physics.location.x, physics.location.y, physics.location.z)
             intercept_time = i / 60
             if ball_location.z > 600:
-                aerial = Aerial(ball_location, intercept_time, True, target=agent.friend_goal.location)
+                aerial = Aerial(ball_location, intercept_time, True, target=agent.foe_goal.location)
                 if aerial.is_viable(agent.drones[0]):
                     agent.drones[0].push(aerial)
                     break

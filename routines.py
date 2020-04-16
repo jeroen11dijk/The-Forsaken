@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from copy import copy
 from typing import TYPE_CHECKING
 
 from objects import Vector3, Routine
@@ -51,6 +52,7 @@ class Aerial(Routine):
         self.jumping = on_ground
         self.time = -1
         self.jump_time = -1
+        self.counter = 0
 
     def run(self, drone: CarObject, agent: MyHivemind):
         if self.time == -1:
@@ -79,25 +81,32 @@ class Aerial(Routine):
             vf += drone.up * jump_speed
             xf += drone.up * jump_speed * (T - tau)
 
-            drone.controller.jump = 1 if jump_elapsed <= jump_max_duration else 0
-
-            self.jumping = jump_elapsed <= jump_max_duration
+            if jump_elapsed < jump_max_duration:
+                drone.controller.jump = True
+            elif elapsed >= jump_max_duration and self.counter < 3:
+                drone.controller.jump = False
+                self.counter += 1
+            elif elapsed < 0.3:
+                drone.controller.jump = True
+            else:
+                self.jumping = jump_elapsed <= jump_max_duration
         else:
             drone.controller.jump = 0
 
         delta_x = self.ball_location - xf
         direction = delta_x.normalize()
-
+        agent.line(drone.location, delta_x)
         if delta_x.magnitude() > 50:
             defaultPD(drone, drone.local(delta_x))
         else:
             if self.target is not None:
-                print(self.target)
+                print("TARGET")
                 defaultPD(drone, drone.local(self.target - drone.location))
             else:
                 defaultPD(drone, drone.local(self.ball_location - drone.location))
 
         if jumping_prev and not self.jumping:
+            print("HERE")
             drone.controller.roll = 0
             drone.controller.pitch = 0
             drone.controller.yaw = 0
