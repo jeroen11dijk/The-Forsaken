@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from rlbot.utils.game_state_util import GameState, BallState, CarState, Physics, Rotator
 from rlbot.utils.game_state_util import Vector3 as RLBot3
 
-from objects import Action, Vector3, TestState
-from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow, Aerial
+from objects import Action, TestState
+from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow
 from tools import push_shot, setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
 from utils import closest_boost
 
@@ -114,20 +114,6 @@ def run_test(agent: MyHivemind):
         if agent.time - agent.test_time > 0.2:
             next_state = TestState.Init
     elif agent.test_state == TestState.Init:
-        # ball_prediction = agent.get_ball_prediction_struct()
-        # drone = agent.drones[0]
-        # for i in range(1, ball_prediction.num_slices):
-        #     ball_location = Vector3(ball_prediction.slices[i].physics.location)
-        #     car_to_ball = ball_location - drone.location
-        #     direction = car_to_ball.normalize()
-        #     best_shot_vector = direction.clamp(agent.foe_goal.left_post, agent.foe_goal.right_post)
-        #     target = ball_location + 92 * (ball_location - agent.foe_goal.location).normalize()
-        #     intercept_time = i / 60
-        #     if ball_location.z > 600:
-        #         aerial = Aerial(target, intercept_time, True, target=best_shot_vector)
-        #         if aerial.is_viable(agent.drones[0]):
-        #             agent.drones[0].push(aerial)
-        #             break
         push_shot(agent.drones[0], agent)
         next_state = TestState.Running
     elif agent.test_state == TestState.Running:

@@ -92,12 +92,9 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
                                         ball_location[2] - 250) * 0.14 > drone.boost:
                                     hits[pair].append(
                                         AerialShot(ball_location, intercept_time, best_shot_vector))
-                                if ball_location[2] > 600:
-                                    print("HERE")
-                                    target = ball_location + 92 * (ball_location - agent.foe_goal.location).normalize()
-                                    aerial = Aerial(target, intercept_time, True, target=best_shot_vector)
-                                    if aerial.is_viable(drone):
-                                        print("ADDED AERIAL")
+                                if ball_location.z > 600:
+                                    aerial = Aerial(ball_location - 92 * best_shot_vector, time_remaining, True, target=best_shot_vector)
+                                    if aerial.is_viable(agent.drones[0]):
                                         hits[pair].append(aerial)
                             elif backward_flag and ball_location[2] <= 280 and slope > 0.25:
                                 hits[pair].append(JumpShot(ball_location, intercept_time, best_shot_vector, slope, -1))
@@ -124,6 +121,7 @@ def push_shot(drone: CarObject, agent: MyHivemind):
     targets["upfield"] = (left, right)
     shots = find_hits(drone, agent, targets)
     if len(shots["goal"]) > 0:
+        print(shots["goal"])
         drone.clear()
         drone.push(shots["goal"][0])
         drone.action = Action.Going
