@@ -93,8 +93,8 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
                                     hits[pair].append(
                                         AerialShot(ball_location, intercept_time, best_shot_vector))
                                 if ball_location.z > 600:
-                                    aerial = Aerial(ball_location - 92 * best_shot_vector, time_remaining, True, target=best_shot_vector)
-                                    if aerial.is_viable(agent.drones[0]):
+                                    aerial = Aerial(ball_location - 92*best_shot_vector, intercept_time, True, target=best_shot_vector)
+                                    if aerial.is_viable(agent.drones[0], agent.time):
                                         hits[pair].append(aerial)
                             elif backward_flag and ball_location[2] <= 280 and slope > 0.25:
                                 hits[pair].append(JumpShot(ball_location, intercept_time, best_shot_vector, slope, -1))
@@ -102,8 +102,11 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
 
 
 def push_shot(drone: CarObject, agent: MyHivemind):
-    left = Vector3(4200 * -agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
-    right = Vector3(4200 * agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
+    start = time.time()
+    # left = Vector3(4200 * -agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
+    # right = Vector3(4200 * agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
+    left = Vector3(4200 * -agent.side(), agent.side() * 5120, 0)
+    right = Vector3(4200 * agent.side(), agent.side() * 5120, 0)
     targets = {"goal": (agent.foe_goal.left_post, agent.foe_goal.right_post)}
     if not agent.conceding:
         drones = copy(agent.drones)
@@ -111,7 +114,7 @@ def push_shot(drone: CarObject, agent: MyHivemind):
         team = agent.friends + drones
         for teammate in team:
             a = teammate.location
-            b = teammate.location + 2000*teammate.forward
+            b = teammate.location + 2000 * teammate.forward
             local_a = drone.local(a)
             angle_a = math.atan2(local_a.y, local_a.x)
             if angle_a > 0:
@@ -121,7 +124,6 @@ def push_shot(drone: CarObject, agent: MyHivemind):
     targets["upfield"] = (left, right)
     shots = find_hits(drone, agent, targets)
     if len(shots["goal"]) > 0:
-        print(shots["goal"])
         drone.clear()
         drone.push(shots["goal"][0])
         drone.action = Action.Going
@@ -129,16 +131,15 @@ def push_shot(drone: CarObject, agent: MyHivemind):
         drone.clear()
         drone.push(shots["teammate0"][0])
         drone.action = Action.Going
-        print("PASSING!0")
     elif shots.get("teammate1") is not None and len(shots.get("teammate1")) > 0:
         drone.clear()
         drone.push(shots["teammate1"][0])
         drone.action = Action.Going
-        print("PASSING!1")
     elif len(shots["upfield"]) > 0:
         drone.clear()
         drone.push(shots["upfield"][0])
         drone.action = Action.Going
+    print("time: ", time.time() - start)
 
 
 def setup_2s_kickoff(agent: MyHivemind):

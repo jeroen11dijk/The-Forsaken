@@ -60,10 +60,9 @@ class Aerial(Routine):
             self.time = agent.time
         else:
             elapsed = agent.time - self.time
-        T = self.intercept_time - elapsed
+        T = self.intercept_time - agent.time
         xf = drone.location + drone.velocity * T + 0.5 * gravity * T ** 2
         vf = drone.velocity + gravity * T
-        jumping_prev = self.jumping
         if self.jumping:
             if self.jump_time == -1:
                 jump_elapsed = 0
@@ -106,7 +105,6 @@ class Aerial(Routine):
                 defaultPD(drone, drone.local(self.ball_location - drone.location))
 
         if jump_max_duration <= elapsed < 0.3 and self.counter == 3:
-            print("HERE")
             drone.controller.roll = 0
             drone.controller.pitch = 0
             drone.controller.yaw = 0
@@ -123,13 +121,12 @@ class Aerial(Routine):
             drone.controller.boost = 0
             drone.controller.throttle = 0
 
-        # if T <= 0 or not shot_valid(agent, self):
-        if T <= 0:
+        if T <= 0 or not shot_valid(agent, self, threshold=150):
             drone.pop()
             drone.push(Recovery(agent.friend_goal.location))
 
-    def is_viable(self, drone: CarObject):
-        T = self.intercept_time
+    def is_viable(self, drone: CarObject, time: float):
+        T = self.intercept_time - time
         xf = drone.location + drone.velocity * T + 0.5 * gravity * T ** 2
         vf = drone.velocity + gravity * T
         if not drone.airborne:
