@@ -6,7 +6,7 @@ from copy import copy
 from typing import TYPE_CHECKING
 
 from objects import Vector3, Action
-from routines import OffCenterKickoff, GotoBoost, Shadow, DiagonalKickoff, JumpShot, AerialShot
+from routines import OffCenterKickoff, GotoBoost, Shadow, DiagonalKickoff, JumpShot, AerialShot, Aerial
 from utils import cap, in_field, post_correction, find_slope, closest_boost
 
 if TYPE_CHECKING:
@@ -92,6 +92,13 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
                                         ball_location[2] - 250) * 0.14 > drone.boost:
                                     hits[pair].append(
                                         AerialShot(ball_location, intercept_time, best_shot_vector))
+                                if ball_location[2] > 600:
+                                    print("HERE")
+                                    target = ball_location + 92 * (ball_location - agent.foe_goal.location).normalize()
+                                    aerial = Aerial(target, intercept_time, True, target=best_shot_vector)
+                                    if aerial.is_viable(drone):
+                                        print("ADDED AERIAL")
+                                        hits[pair].append(aerial)
                             elif backward_flag and ball_location[2] <= 280 and slope > 0.25:
                                 hits[pair].append(JumpShot(ball_location, intercept_time, best_shot_vector, slope, -1))
     return hits
