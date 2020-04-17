@@ -44,7 +44,7 @@ class Atba(Routine):
 
 class Aerial(Routine):
 
-    def __init__(self, ball_location: Vector3, intercept_time: float, on_ground: bool, target:Vector3 = None):
+    def __init__(self, ball_location: Vector3, intercept_time: float, on_ground: bool, target: Vector3 = None):
         super().__init__()
         self.ball_location = ball_location
         self.intercept_time = intercept_time
@@ -95,21 +95,22 @@ class Aerial(Routine):
 
         delta_x = self.ball_location - xf
         direction = delta_x.normalize()
-        agent.line(drone.location, delta_x)
+        if self.target is not None:
+            agent.line(drone.location, self.target)
         if delta_x.magnitude() > 50:
             defaultPD(drone, drone.local(delta_x))
         else:
             if self.target is not None:
-                print("TARGET")
-                defaultPD(drone, drone.local(self.target - drone.location))
+                defaultPD(drone, drone.local(self.target))
             else:
                 defaultPD(drone, drone.local(self.ball_location - drone.location))
 
-        if jumping_prev and not self.jumping:
+        if jump_max_duration <= elapsed < 0.3 and self.counter == 3:
             print("HERE")
             drone.controller.roll = 0
             drone.controller.pitch = 0
             drone.controller.yaw = 0
+            drone.controller.steer = 0
 
         if drone.forward.angle2D(direction) < 0.3:
             if delta_x.magnitude() > 50:

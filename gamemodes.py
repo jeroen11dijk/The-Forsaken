@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from copy import copy
-import time
-from typing import TYPE_CHECKING
 import random
+from copy import copy
+from typing import TYPE_CHECKING
 
 from rlbot.utils.game_state_util import GameState, BallState, CarState, Physics, Rotator
 from rlbot.utils.game_state_util import Vector3 as RLBot3
@@ -79,12 +78,12 @@ def run_test(agent: MyHivemind):
         agent.test_time = agent.time
 
         b_position = RLBot3(random.uniform(-1500, 1500),
-                             random.uniform(2500, 3500),
-                             random.uniform(300, 500))
+                            random.uniform(2500, 3500),
+                            random.uniform(300, 500))
 
         b_velocity = RLBot3(random.uniform(-300, 300),
-                             random.uniform(-100, 100),
-                             random.uniform(900, 1000))
+                            random.uniform(-100, 100),
+                            random.uniform(900, 1000))
 
         ball_state = BallState(physics=Physics(
             location=b_position,
@@ -115,23 +114,23 @@ def run_test(agent: MyHivemind):
         if agent.time - agent.test_time > 0.2:
             next_state = TestState.Init
     elif agent.test_state == TestState.Init:
-        a = time.time()
         ball_prediction = agent.get_ball_prediction_struct()
+        drone = agent.drones[0]
         for i in range(1, ball_prediction.num_slices):
-            prediction_slice = ball_prediction.slices[i]
-            physics = prediction_slice.physics
-            ball_location = Vector3(physics.location.x, physics.location.y, physics.location.z)
+            ball_location = Vector3(ball_prediction.slices[i].physics.location)
+            car_to_ball = ball_location - drone.location
+            direction = car_to_ball.normalize()
+            best_shot_vector = direction.clamp(agent.foe_goal.left_post, agent.foe_goal.right_post)
+            target = ball_location + 92 * (ball_location - agent.foe_goal.location).normalize()
             intercept_time = i / 60
             if ball_location.z > 600:
-                aerial = Aerial(ball_location, intercept_time, True, target=agent.foe_goal.location)
+                aerial = Aerial(target, intercept_time, True, target=best_shot_vector)
                 if aerial.is_viable(agent.drones[0]):
                     agent.drones[0].push(aerial)
                     break
         next_state = TestState.Running
-        print(time.time() - a)
     elif agent.test_state == TestState.Running:
         if agent.time - agent.test_time > 5:
             next_state = TestState.Reset
             agent.drones[0].clear()
     agent.test_state = next_state
-
