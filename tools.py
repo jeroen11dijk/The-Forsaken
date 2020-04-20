@@ -102,9 +102,6 @@ def find_hits(drone: CarObject, agent: MyHivemind, targets):
 
 
 def push_shot(drone: CarObject, agent: MyHivemind):
-    start = time.time()
-    # left = Vector3(4200 * -agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
-    # right = Vector3(4200 * agent.side(), agent.ball.location.y + (1000 * -agent.side()), 0)
     left = Vector3(4200 * -agent.side(), agent.side() * 5120, 0)
     right = Vector3(4200 * agent.side(), agent.side() * 5120, 0)
     targets = {"goal": (agent.foe_goal.left_post, agent.foe_goal.right_post)}
@@ -139,7 +136,6 @@ def push_shot(drone: CarObject, agent: MyHivemind):
         drone.clear()
         drone.push(shots["upfield"][0])
         drone.action = Action.Going
-    print("time: ", time.time() - start)
 
 
 def setup_2s_kickoff(agent: MyHivemind):
