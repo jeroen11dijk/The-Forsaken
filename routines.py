@@ -88,14 +88,12 @@ class Aerial(Routine):
             elif elapsed < 0.3:
                 drone.controller.jump = True
             else:
-                self.jumping = jump_elapsed <= jump_max_duration
+                self.jumping = jump_elapsed <= 0.3
         else:
             drone.controller.jump = 0
 
         delta_x = self.ball_location - xf
         direction = delta_x.normalize()
-        if self.target is not None:
-            agent.line(drone.location, self.target)
         if delta_x.magnitude() > 50:
             defaultPD(drone, drone.local(delta_x))
         else:
@@ -110,7 +108,7 @@ class Aerial(Routine):
             drone.controller.yaw = 0
             drone.controller.steer = 0
 
-        if drone.forward.angle2D(direction) < 0.3:
+        if drone.forward.angle3D(direction) < 0.3:
             if delta_x.magnitude() > 50:
                 drone.controller.boost = 1
                 drone.controller.throttle = 0
