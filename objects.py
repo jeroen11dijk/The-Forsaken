@@ -363,10 +363,7 @@ class Action(Enum):
     Going = 0
     Shadowing = 1
     Boost = 2
-    Rotating = 3
-    Bumping = 4
-    Defending = 6
-    Nothing = 5
+    Nothing = 3
 
 
 class TestState(Enum):
