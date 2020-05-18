@@ -52,9 +52,12 @@ def run_hivemind(agent: MyHivemind):
             drones = copy(agent.drones)
             drones.remove(drone)
             team = agent.friends + drones
-            if len(drone.stack) < 1 or drone.action == Action.Shadowing:
-                if drone.on_side and drone.closest or agent.conceding:
-                    push_shot(drone, agent)
+            empty_stack = len(drone.stack) < 1
+            should_go = drone.action == Action.Shadowing and drone.on_side and drone.closest
+            conceding = agent.conceding and drone.on_side and drone.closest
+            cheating = drone.action == Action.Cheating
+            if empty_stack or should_go or conceding or cheating:
+                push_shot(drone, agent)
             if len(drone.stack) < 1:
                 if drone.action == Action.Going:
                     if any(teammate.on_side for teammate in team):

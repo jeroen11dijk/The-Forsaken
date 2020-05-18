@@ -364,6 +364,7 @@ class Action(Enum):
     Shadowing = 1
     Boost = 2
     Nothing = 3
+    Cheating = 4
 
 
 class TestState(Enum):
