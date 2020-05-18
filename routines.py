@@ -399,7 +399,7 @@ class Goto(Routine):
         velocity = 1 + drone.velocity.magnitude()
         if distance_remaining < 350:
             drone.pop()
-        elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and distance_remaining / velocity > 2.0:
+        elif abs(angles[1]) < 0.05 and 750 < velocity < 2150 and distance_remaining / velocity > 2.0:
             drone.push(Flip(local_target))
         # TODO Halfflip
         # elif abs(angles[1]) > 2.8 and velocity < 200:
@@ -418,7 +418,7 @@ class Shadow(Routine):
         self.direction = direction
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        target = agent.friend_goal.location + 2 * (agent.ball.location - agent.friend_goal.location) / 3
+        target = agent.friend_goal.location + (agent.ball.location - agent.friend_goal.location) / 3
         car_to_target = target - drone.location
         distance_remaining = car_to_target.flatten().magnitude()
 
@@ -449,7 +449,7 @@ class Shadow(Routine):
         velocity = 1 + drone.velocity.magnitude()
         if distance_remaining < 350:
             drone.pop()
-        elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and distance_remaining / velocity > 2.0:
+        elif abs(angles[1]) < 0.05 and 750 < velocity < 2150 and distance_remaining / velocity > 2.0:
             drone.push(Flip(local_target))
         # TODO Halfflip
         # elif abs(angles[1]) > 2.8 and velocity < 200:
@@ -505,7 +505,7 @@ class GotoBoost(Routine):
             drone.pop()
         elif drone.airborne:
             drone.push(Recovery(self.target))
-        elif abs(angles[1]) < 0.05 and 600 < velocity < 2150 and (
+        elif abs(angles[1]) < 0.05 and 750 < velocity < 2150 and (
                 distance_remaining / velocity > 2.0 or (adjustment < 90 and car_to_target / velocity > 2.0)):
             drone.push(Flip(local_target))
 

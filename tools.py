@@ -6,7 +6,7 @@ from copy import copy
 from typing import TYPE_CHECKING
 
 from objects import Vector3, Action
-from routines import OffCenterKickoff, GotoBoost, Shadow, DiagonalKickoff, JumpShot, AerialShot, Aerial
+from routines import OffCenterKickoff, GotoBoost, Shadow, DiagonalKickoff, JumpShot, AerialShot, Aerial, Goto
 from utils import cap, in_field, post_correction, find_slope, closest_boost
 
 if TYPE_CHECKING:
@@ -184,7 +184,8 @@ def setup_3s_kickoff(agent: MyHivemind):
                 drone.push(DiagonalKickoff())
                 drone.action = Action.Going
             elif round(drone.location.x) == agent.side() * 2048:
-                drone.push(Shadow(agent.ball.location))
+                target = agent.friend_goal.location + 2 * (agent.ball.location - agent.friend_goal.location) / 3
+                drone.push(Goto(target))
                 drone.action = Action.Cheating
             else:
                 drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
@@ -195,7 +196,8 @@ def setup_3s_kickoff(agent: MyHivemind):
                 drone.push(OffCenterKickoff())
                 drone.action = Action.Going
             elif round(drone.location.x) == agent.side() * 256:
-                drone.push(Shadow(agent.ball.location))
+                target = agent.friend_goal.location + 2 * (agent.ball.location - agent.friend_goal.location) / 3
+                drone.push(Goto(target))
                 drone.action = Action.Cheating
             else:
                 drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
@@ -206,14 +208,16 @@ def setup_3s_kickoff(agent: MyHivemind):
                 drone.push(DiagonalKickoff())
                 drone.action = Action.Going
             elif round(drone.location.x) == agent.side() * -256:
-                drone.push(Shadow(agent.ball.location))
+                target = agent.friend_goal.location + 2 * (agent.ball.location - agent.friend_goal.location) / 3
+                drone.push(Goto(target))
                 drone.action = Action.Cheating
             elif round(drone.location.x) == 0:
                 drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
                 drone.action = Action.Boost
             else:
                 if 0 in x_pos:
-                    drone.push(Shadow(agent.ball.location))
+                    target = agent.friend_goal.location + 2 * (agent.ball.location - agent.friend_goal.location) / 3
+                    drone.push(Goto(target))
                     drone.action = Action.Cheating
                 else:
                     drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
