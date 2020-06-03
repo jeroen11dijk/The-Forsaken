@@ -45,7 +45,6 @@ class MyHivemind(PythonHivemind):
         self.kickoff_flag: bool = False
         self.prev_kickoff_flag: bool = False
         self.conceding: bool = False
-        self.shadow_location: Vector3 = Vector3([0, 0, 0])
         self.last_time: float = 0
         self.my_score: float = 0
         self.foe_score: float = 0
@@ -119,7 +118,6 @@ class MyHivemind(PythonHivemind):
         sorted_by_dist_on_side = [bot for bot in sorted_by_dist if bot.on_side]
         if len(sorted_by_dist_on_side) > 0:
             sorted_by_dist_on_side[0].closest = True
-        self.shadow_location = self.friend_goal.location + (self.ball.location - self.friend_goal.location) / 3
         self.conceding = False
         ball_prediction = self.get_ball_prediction_struct()
         for i in range(ball_prediction.num_slices):

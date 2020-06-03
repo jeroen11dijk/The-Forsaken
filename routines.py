@@ -306,58 +306,6 @@ class Flip(Routine):
             drone.push(Recovery(self.vector, target_local=True))
 
 
-class SpeedFlip(Routine):
-    # Flip takes a vector in local coordinates and flips/dodges in that direction
-    def __init__(self, vector: Vector3, duration: float = 0.1, delay: float = 0.1, angle: float = 0,
-                 boost: bool = False):
-        super().__init__()
-        self.vector = vector.normalize()
-        self.pitch = abs(self.vector[0]) * -sign(self.vector[0])
-        self.yaw = abs(self.vector[1]) * sign(self.vector[1])
-        self.delay = delay if delay >= duration else duration
-        self.duration = duration
-        self.boost = boost
-        self.angle = math.radians(angle) if boost else 0
-        x = math.cos(self.angle) * self.vector.x - math.sin(self.angle) * self.vector.y
-        y = math.sin(self.angle) * self.vector.x + math.cos(self.angle) * self.vector.y
-        self.preorientation = Vector3(x, y, 0)
-        # the time the jump began
-        self.time = -1
-        # keeps track of the frames the jump button has been released
-        self.counter = 0
-
-    def run(self, drone: CarObject, agent: MyHivemind):
-        # An example of pushing routines to the stack:
-        agent.line(Vector3(0, 0, 50), 2000 * self.vector.flatten(), color=[255, 0, 0])
-        agent.line(Vector3(0, 0, 50), 2000 * drone.forward.flatten(), color=[0, 255, 0])
-        robbies_constant = (self.vector * 1.5 * 2200 - drone.velocity * 1.5) * 2 * 1.5 ** -2
-        robbies_boost_constant = drone.forward.flatten().normalize().dot(robbies_constant.flatten().normalize()) > (
-            0.3 if not drone.airborne else 0.1)
-        drone.controller.boost = robbies_boost_constant and self.boost and not drone.supersonic
-        if self.time == -1:
-            elapsed = 0
-            self.time = agent.time
-        else:
-            elapsed = agent.time - self.time
-        if elapsed < self.delay:
-            if elapsed < self.duration:
-                drone.controller.jump = True
-            else:
-                drone.controller.jump = False
-                self.counter += 1
-            defaultPD(drone, self.preorientation)
-        elif elapsed >= self.delay and self.counter < 3:
-            drone.controller.jump = False
-            defaultPD(drone, self.preorientation)
-            self.counter += 1
-        elif elapsed < self.delay + 0.05:
-            drone.controller.jump = True
-            defaultPD(drone, self.vector)
-        else:
-            drone.pop()
-            drone.push(Recovery(boost=self.boost, time=agent.time))
-
-
 class Goto(Routine):
     # Drives towards a designated (stationary) target
     # Optional vector controls where the car should be pointing upon reaching the target
@@ -369,7 +317,6 @@ class Goto(Routine):
         self.direction = direction
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        print(self.target, agent.ball.location)
         car_to_target = self.target - drone.location
         distance_remaining = car_to_target.flatten().magnitude()
 
@@ -407,6 +354,54 @@ class Goto(Routine):
         #     agent.push(flip(local_target, True))
         elif drone.airborne:
             drone.push(Recovery(self.target))
+
+
+class BackPost(Routine):
+    # Drives towards a designated (stationary) target
+    # Optional vector controls where the car should be pointing upon reaching the target
+    # TODO - slow down if target is inside our turn radius
+    def __init__(self):
+        super().__init__()
+
+    def run(self, drone: CarObject, agent: MyHivemind):
+        if agent.ball.location[0] * agent.side() < 0:
+            target = agent.friend_goal.right_post
+        else:
+            target = agent.friend_goal.left_post
+        car_to_target = target - drone.location
+        distance_remaining = car_to_target.flatten().magnitude()
+
+        agent.line(target - Vector3(0, 0, 500), target + Vector3(0, 0, 500), [255, 0, 255])
+
+        # See commends for adjustment in jump_shot or aerial for explanation
+        side_of_vector = sign(agent.ball.location.cross((0, 0, 1)).dot(car_to_target))
+        car_to_target_perp = car_to_target.cross((0, 0, side_of_vector)).normalize()
+        adjustment = car_to_target.angle2D(agent.ball.location) * distance_remaining / 3.14
+        final_target = target + (car_to_target_perp * adjustment)
+
+        # Some adjustment to the final target to ensure it's inside the field and
+        # we don't try to drive through any goalposts to reach it
+        if abs(drone.location[1]) > 5150:
+            final_target[0] = cap(final_target[0], -750, 750)
+
+        local_target = drone.local(final_target - drone.location)
+
+        angles = defaultPD(drone, local_target, 1)
+        defaultThrottle(drone, 2300, 1)
+
+        drone.controller.boost = False
+        drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
+
+        velocity = 1 + drone.velocity.magnitude()
+        if distance_remaining < 350:
+            drone.pop()
+        elif abs(angles[1]) < 0.05 and 750 < velocity < 2150 and distance_remaining / velocity > 2.0:
+            drone.push(Flip(local_target))
+        # TODO Halfflip
+        # elif abs(angles[1]) > 2.8 and velocity < 200:
+        #     agent.push(flip(local_target, True))
+        elif drone.airborne:
+            drone.push(Recovery(target))
 
 
 class Shadow(Routine):

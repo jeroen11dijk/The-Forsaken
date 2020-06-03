@@ -365,6 +365,7 @@ class Action(Enum):
     Boost = 2
     Nothing = 3
     Cheating = 4
+    Backpost = 5
 
 
 class TestState(Enum):
