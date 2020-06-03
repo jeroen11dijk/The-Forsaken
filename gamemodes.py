@@ -8,7 +8,7 @@ from rlbot.utils.game_state_util import GameState, BallState, CarState, Physics,
 from rlbot.utils.game_state_util import Vector3 as RLBot3
 
 from objects import Action, TestState
-from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow
+from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow, Goto
 from tools import push_shot, setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
 from utils import closest_boost
 
@@ -60,7 +60,7 @@ def run_hivemind(agent: MyHivemind):
                 push_shot(drone, agent)
             if len(drone.stack) < 1:
                 if drone.action == Action.Going:
-                    if any(teammate.on_side for teammate in team):
+                    if any(teammate.on_side for teammate in team) and drone.boost < 66:
                         drone.push(GotoBoost(closest_boost(agent, drone.location)))
                         drone.action = Action.Boost
                     else:

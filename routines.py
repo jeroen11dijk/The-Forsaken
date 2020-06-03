@@ -369,6 +369,7 @@ class Goto(Routine):
         self.direction = direction
 
     def run(self, drone: CarObject, agent: MyHivemind):
+        print(self.target, agent.ball.location)
         car_to_target = self.target - drone.location
         distance_remaining = car_to_target.flatten().magnitude()
 
