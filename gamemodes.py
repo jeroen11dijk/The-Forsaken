@@ -34,7 +34,7 @@ def run_1v1(agent: MyHivemind):
             if drone.on_side or agent.conceding:
                 push_shot(drone, agent)
         if len(drone.stack) < 1:
-            drone.push(Shadow(agent.ball.location))
+            drone.push(Shadow())
             drone.action = Action.Shadowing
 
 
@@ -64,13 +64,13 @@ def run_hivemind(agent: MyHivemind):
                         drone.push(GotoBoost(closest_boost(agent, drone.location)))
                         drone.action = Action.Boost
                     else:
-                        drone.push(Shadow(agent.ball.location))
+                        drone.push(Shadow())
                         drone.action = Action.Shadowing
                 elif drone.action == Action.Shadowing:
-                    drone.push(Shadow(agent.ball.location))
+                    drone.push(Shadow())
                     drone.action = Action.Shadowing
                 elif drone.action == Action.Boost:
-                    drone.push(Shadow(agent.ball.location))
+                    drone.push(Shadow())
                     drone.action = Action.Shadowing
 
 

@@ -147,7 +147,7 @@ def setup_2s_kickoff(agent: MyHivemind):
                 drone.push(DiagonalKickoff())
                 drone.action = Action.Going
             elif round(drone.location.x) == agent.side() * 2048:
-                drone.push(Shadow(agent.ball.location))
+                drone.push(Shadow())
                 drone.action = Action.Shadowing
     elif sorted(x_pos) == [-256, 256]:
         for drone in agent.drones:
@@ -155,7 +155,7 @@ def setup_2s_kickoff(agent: MyHivemind):
                 drone.push(OffCenterKickoff())
                 drone.action = Action.Going
             elif round(drone.location.x) == agent.side() * 256:
-                drone.push(Shadow(agent.ball.location))
+                drone.push(Shadow())
                 drone.action = Action.Shadowing
     elif -2048 in x_pos or 2048 in x_pos:
         for drone in agent.drones:
@@ -163,7 +163,7 @@ def setup_2s_kickoff(agent: MyHivemind):
                 drone.push(DiagonalKickoff())
                 drone.action = Action.Going
             else:
-                drone.push(Shadow(agent.ball.location))
+                drone.push(Shadow())
                 drone.action = Action.Shadowing
     elif -256 in x_pos or 256 in x_pos:
         for drone in agent.drones:
@@ -171,7 +171,7 @@ def setup_2s_kickoff(agent: MyHivemind):
                 drone.push(OffCenterKickoff())
                 drone.action = Action.Going
             else:
-                drone.push(Shadow(agent.ball.location))
+                drone.push(Shadow())
                 drone.action = Action.Shadowing
 
 
@@ -233,11 +233,11 @@ def setup_other_kickoff(agent: MyHivemind):
             drone.action = Action.Going
         elif round(drone.location.x) == 2048:
             if -2048 in x_pos:
-                drone.push(Shadow(agent.ball.location))
+                drone.push(Shadow())
                 drone.action = Action.Shadowing
             else:
                 drone.push(DiagonalKickoff())
                 drone.action = Action.Going
         else:
-            drone.push(Shadow(agent.ball.location))
+            drone.push(Shadow())
             drone.action = Action.Shadowing

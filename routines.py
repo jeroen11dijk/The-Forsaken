@@ -412,10 +412,8 @@ class Shadow(Routine):
     # Drives towards a designated (stationary) target
     # Optional vector controls where the car should be pointing upon reaching the target
     # TODO - slow down if target is inside our turn radius
-    def __init__(self, vector: Vector3 = None, direction: float = 1):
+    def __init__(self):
         super().__init__()
-        self.vector = vector
-        self.direction = direction
 
     def run(self, drone: CarObject, agent: MyHivemind):
         target = agent.friend_goal.location + (agent.ball.location - agent.friend_goal.location) / 3
@@ -424,14 +422,11 @@ class Shadow(Routine):
 
         agent.line(target - Vector3(0, 0, 500), target + Vector3(0, 0, 500), [255, 0, 255])
 
-        if self.vector is not None:
-            # See commends for adjustment in jump_shot or aerial for explanation
-            side_of_vector = sign(self.vector.cross((0, 0, 1)).dot(car_to_target))
-            car_to_target_perp = car_to_target.cross((0, 0, side_of_vector)).normalize()
-            adjustment = car_to_target.angle2D(self.vector) * distance_remaining / 3.14
-            final_target = target + (car_to_target_perp * adjustment)
-        else:
-            final_target = target
+        # See commends for adjustment in jump_shot or aerial for explanation
+        side_of_vector = sign(agent.ball.location.cross((0, 0, 1)).dot(car_to_target))
+        car_to_target_perp = car_to_target.cross((0, 0, side_of_vector)).normalize()
+        adjustment = car_to_target.angle2D(agent.ball.location) * distance_remaining / 3.14
+        final_target = target + (car_to_target_perp * adjustment)
 
         # Some adjustment to the final target to ensure it's inside the field and
         # we don't try to drive through any goalposts to reach it
@@ -440,8 +435,8 @@ class Shadow(Routine):
 
         local_target = drone.local(final_target - drone.location)
 
-        angles = defaultPD(drone, local_target, self.direction)
-        defaultThrottle(drone, 2300, self.direction)
+        angles = defaultPD(drone, local_target, 1)
+        defaultThrottle(drone, 2300, 1)
 
         drone.controller.boost = False
         drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
