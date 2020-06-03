@@ -133,7 +133,6 @@ class MyHivemind(PythonHivemind):
         if not self.ready:
             self.get_ready(packet)
         self.preprocess(packet)
-
         self.renderer.begin_rendering()
         # Run our strategy code
         self.run()
