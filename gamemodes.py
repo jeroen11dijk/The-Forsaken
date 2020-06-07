@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 from rlbot.utils.game_state_util import GameState, BallState, CarState, Physics, Rotator
 from rlbot.utils.game_state_util import Vector3 as RLBot3
 
-from objects import Action, TestState
+from objects import Action, TestState, Vector3
 from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow, BackPost, Wait
 from tools import push_shot, setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
-from utils import closest_boost
+from utils import closest_boost, distance
 
 if TYPE_CHECKING:
     from hive import MyHivemind
@@ -53,15 +53,12 @@ def run_hivemind(agent: MyHivemind):
             drones.remove(drone)
             team = agent.friends + drones
             empty_stack = len(drone.stack) < 1 and drone.on_side and drone.closest
-            should_go = (
-                                    drone.action == Action.Shadowing or drone.action == Action.Backpost) and drone.on_side and drone.closest
+            should_go = (drone.action == Action.Shadowing or drone.action == Action.Backpost) and drone.on_side and drone.closest
             conceding = (agent.conceding and not any(teammate.on_side for teammate in team)) or (
                         agent.conceding and drone.on_side and drone.closest)
             cheating = drone.action == Action.Cheating
             if empty_stack or should_go or conceding or cheating:
                 push_shot(drone, agent)
-            if len(drone.stack) < 1 and conceding:
-                print("We are in danger")
             if len(drone.stack) < 1:
                 if drone.action == Action.Going:
                     if any(teammate.on_side for teammate in team) and drone.boost < 66:
@@ -87,12 +84,19 @@ def run_hivemind(agent: MyHivemind):
                     else:
                         drone.push(Shadow())
                         drone.action = Action.Shadowing
-                elif drone.action == BackPost:
+                elif drone.action == Action.Backpost:
                     if all(teammate.on_side for teammate in team) and drone.boost < 66:
                         drone.push(GotoBoost(closest_boost(agent, drone.location)))
                         drone.action = Action.Boost
-                    elif all(teammate.on_side for teammate in team):
-                        drone.push(Wait())
+                    elif all(teammate.on_side for teammate in team) and not (drone.closest or drone.second_closest):
+                        if agent.ball.location[0] * agent.side() < 0:
+                            backpost = agent.friend_goal.right_post + Vector3([0, -300 * agent.side(), 0])
+                        else:
+                            backpost = agent.friend_goal.left_post + Vector3([0, -300 * agent.side(), 0])
+                        if (drone.location - backpost).magnitude() > 100:
+                            drone.push(BackPost())
+                        else:
+                            drone.push(Wait())
                     else:
                         drone.push(Shadow())
                         drone.action = Action.Shadowing

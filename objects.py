@@ -34,6 +34,7 @@ class CarObject:
         self.action: Action = Action.Shadowing
         self.on_side: bool = False
         self.closest: bool = False
+        self.second_closest: bool = False
         if packet is not None:
             self.team = packet.game_cars[self.index].team
             self.update(packet)
@@ -58,6 +59,7 @@ class CarObject:
         # Reset controller
         self.controller = PlayerInput()
         self.closest = False
+        self.second_closest: bool = False
 
     @property
     def forward(self) -> Vector3:

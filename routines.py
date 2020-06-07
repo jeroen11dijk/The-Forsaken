@@ -364,10 +364,10 @@ class BackPost(Routine):
         super().__init__()
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        if agent.ball.location[0] * agent.side() < 0:
-            target = agent.friend_goal.right_post
+        if agent.ball.location[0] * agent.side() > 0:
+            target = agent.friend_goal.right_post + Vector3([0, -300 * agent.side(), 0])
         else:
-            target = agent.friend_goal.left_post
+            target = agent.friend_goal.left_post + Vector3([0, -300 * agent.side(), 0])
         car_to_target = target - drone.location
         distance_remaining = car_to_target.flatten().magnitude()
 
@@ -387,7 +387,14 @@ class BackPost(Routine):
         local_target = drone.local(final_target - drone.location)
 
         angles = defaultPD(drone, local_target, 1)
-        defaultThrottle(drone, 2300, 1)
+        if (drone.location - target).magnitude() > 1000:
+            defaultThrottle(drone, 2300, 1)
+        elif (drone.location - target).magnitude() > 500:
+            defaultThrottle(drone, 1300, 1)
+        elif (drone.location - target).magnitude() > 100:
+            defaultThrottle(drone, 500, 1)
+        else:
+            defaultThrottle(drone, 1, 1)
 
         drone.controller.boost = False
         drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
