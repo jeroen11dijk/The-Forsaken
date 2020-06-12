@@ -374,9 +374,10 @@ class BackPost(Routine):
         agent.line(target - Vector3(0, 0, 500), target + Vector3(0, 0, 500), [255, 0, 255])
 
         # See commends for adjustment in jump_shot or aerial for explanation
-        side_of_vector = sign(agent.ball.location.cross((0, 0, 1)).dot(car_to_target))
+
+        side_of_vector = sign(agent.friend_goal.location.cross((0, 0, 1)).dot(car_to_target))
         car_to_target_perp = car_to_target.cross((0, 0, side_of_vector)).normalize()
-        adjustment = car_to_target.angle2D(agent.ball.location) * distance_remaining / 3.14
+        adjustment = car_to_target.angle2D(agent.friend_goal.location) * distance_remaining / 3.14
         final_target = target + (car_to_target_perp * adjustment)
 
         # Some adjustment to the final target to ensure it's inside the field and

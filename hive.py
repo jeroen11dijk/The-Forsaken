@@ -118,6 +118,7 @@ class MyHivemind(PythonHivemind):
         sorted_by_dist_on_side = [bot for bot in sorted_by_dist if bot.on_side]
         if len(sorted_by_dist_on_side) > 0:
             sorted_by_dist_on_side[0].closest = True
+        if len(sorted_by_dist_on_side) > 1:
             sorted_by_dist_on_side[1].second_closest = True
         self.conceding = False
         ball_prediction = self.get_ball_prediction_struct()
