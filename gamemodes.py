@@ -71,9 +71,6 @@ def run_hivemind(agent: MyHivemind):
                     if all(teammate.on_side for teammate in team) and drone.boost < 66:
                         drone.push(GotoBoost(closest_boost(agent, drone.location)))
                         drone.action = Action.Boost
-                    elif all(teammate.on_side for teammate in team):
-                        drone.push(BackPost())
-                        drone.action = Action.Backpost
                     else:
                         drone.push(Shadow())
                         drone.action = Action.Shadowing
@@ -88,15 +85,6 @@ def run_hivemind(agent: MyHivemind):
                     if all(teammate.on_side for teammate in team) and drone.boost < 66:
                         drone.push(GotoBoost(closest_boost(agent, drone.location)))
                         drone.action = Action.Boost
-                    elif all(teammate.on_side for teammate in team) and not (drone.closest or drone.second_closest):
-                        if agent.ball.location[0] * agent.side() < 0:
-                            backpost = agent.friend_goal.right_post + Vector3([0, -300 * agent.side(), 0])
-                        else:
-                            backpost = agent.friend_goal.left_post + Vector3([0, -300 * agent.side(), 0])
-                        if (drone.location - backpost).magnitude() > 100:
-                            drone.push(BackPost())
-                        else:
-                            drone.push(Wait())
                     else:
                         drone.push(Shadow())
                         drone.action = Action.Shadowing
