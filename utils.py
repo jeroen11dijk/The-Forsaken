@@ -291,3 +291,16 @@ def shot_valid(agent: MyHivemind, shot: Union[AerialShot, JumpShot, Aerial], thr
 
 def distance(a: Vector3, b: Vector3) -> float:
     return (a - b).magnitude()
+
+
+def dodge_impulse(drone: CarObject) -> float:
+    car_speed = drone.velocity.magnitude()
+    impulse = 500 * (1 + 0.9 * (car_speed / 2300))
+    dif = car_speed + impulse - 2300
+    if dif > 0:
+        impulse -= dif
+    return impulse
+
+def side(x):
+    # returns -1 for blue team and 1 for orange team
+    return (-1, 1)[x]

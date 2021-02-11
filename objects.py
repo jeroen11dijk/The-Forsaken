@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import numpy as np
 from enum import Enum
 from typing import TYPE_CHECKING, Union
 
@@ -39,6 +38,8 @@ class CarObject:
         self.time = 0
         self.delta_time = 1 / 120
         self.boost_accel = 991 + (2 / 3)
+        self.gravity = Vector3(0, 0, -650)
+        self.ball_prediction_struct = None
         if packet is not None:
             car = packet.game_cars[self.index]
             self.team = car.team
@@ -48,6 +49,13 @@ class CarObject:
     def local(self, value: Vector3) -> Vector3:
         # Shorthand for self.orientation.dot(value)
         return self.orientation.dot(value)
+
+    def local_location(self, location):
+        # Returns the location of an item relative to the car
+        # x is how far the location is forwards (+) or backwards (-)
+        # y is the velocity to the left (+) or right (-)
+        # z is how far the location is upwards (+) or downwards (-)
+        return self.local(location - self.location)
 
     def local_velocity(self, velocity=None):
         # Returns the velocity of an item relative to the car
@@ -77,6 +85,23 @@ class CarObject:
         self.second_closest: bool = False
         self.delta_time = packet.game_info.seconds_elapsed - self.time
         self.time = packet.game_info.seconds_elapsed
+
+    def get_raw(self, force_on_ground=False):
+        return (
+            tuple(self.location),
+            tuple(self.velocity),
+            (tuple(self.forward), tuple(self.right), tuple(self.up)),
+            tuple(self.angular_velocity),
+            1 if self.demolished else 0,
+            1 if self.airborne and not force_on_ground else 0,
+            1 if self.supersonic else 0,
+            1 if self.jumped else 0,
+            1 if self.doublejumped else 0,
+            self.boost,
+            self.index,
+            tuple(self.hitbox),
+            tuple(self.hitbox.offset)
+        )
 
     @property
     def forward(self) -> Vector3:
@@ -386,6 +411,10 @@ class Vector3:
     def dist(self, other: Vector3) -> float:
         # Distance between 2 vectors
         return math.sqrt((self[0] - other[0])**2 + (self[1] - other[1])**2 + (self[2] - other[2])**2)
+
+    def flat_dist(self, other: Vector3) -> float:
+        # Distance between 2 vectors
+        return math.sqrt((self[0] - other[0])**2 + (self[1] - other[1])**2)
 
 
 class Routine:

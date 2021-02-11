@@ -39,6 +39,7 @@ class MyHivemind(PythonHivemind):
         self.foe_goal: GoalObject = None
         # Game time
         self.time: float = 0.0
+        self.odd_tick = 0
         # Whether or not GoslingAgent has run its get_ready() function
         self.ready: bool = False
         # a flag that tells us when kickoff is happening
@@ -98,7 +99,9 @@ class MyHivemind(PythonHivemind):
         self.ball.update(packet)
         self.game.update(packet)
         self.time = packet.game_info.seconds_elapsed
-        # When a new kickoff begins we empty the stack
+        self.odd_tick += 1
+        if self.odd_tick > 3:
+            self.odd_tick = 0
         self.prev_kickoff_flag = self.kickoff_flag
         self.kickoff_flag = self.game.kickoff or not self.game.round_active
         if not self.prev_kickoff_flag and self.kickoff_flag:
@@ -107,6 +110,7 @@ class MyHivemind(PythonHivemind):
         for drone in self.drones:
             drone.on_side = (drone.location - self.friend_goal.location).magnitude() < (
                     self.ball.location - self.friend_goal.location).magnitude()
+            drone.ball_prediction_struct = self.get_ball_prediction_struct()
         for friend in self.friends:
             friend.on_side = (friend.location - self.friend_goal.location).magnitude() < (
                     self.ball.location - self.friend_goal.location).magnitude()
