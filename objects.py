@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import numpy as np
 from enum import Enum
 from typing import TYPE_CHECKING, Union
 
@@ -35,13 +36,27 @@ class CarObject:
         self.on_side: bool = False
         self.closest: bool = False
         self.second_closest: bool = False
+        self.time = 0
+        self.delta_time = 1 / 120
+        self.boost_accel = 991 + (2 / 3)
         if packet is not None:
-            self.team = packet.game_cars[self.index].team
+            car = packet.game_cars[self.index]
+            self.team = car.team
+            self.hitbox = Hitbox(car.hitbox.length, car.hitbox.width, car.hitbox.height, Vector3(car.hitbox_offset))
             self.update(packet)
 
     def local(self, value: Vector3) -> Vector3:
         # Shorthand for self.orientation.dot(value)
         return self.orientation.dot(value)
+
+    def local_velocity(self, velocity=None):
+        # Returns the velocity of an item relative to the car
+        # x is the velocity forwards (+) or backwards (-)
+        # y is the velocity to the left (+) or right (-)
+        # z if the velocity upwards (+) or downwards (-)
+        if velocity is None:
+            velocity = self.velocity
+        return self.local(velocity)
 
     def update(self, packet: GameTickPacket):
         car = packet.game_cars[self.index]
@@ -60,6 +75,8 @@ class CarObject:
         self.controller = PlayerInput()
         self.closest = False
         self.second_closest: bool = False
+        self.delta_time = packet.game_info.seconds_elapsed - self.time
+        self.time = packet.game_info.seconds_elapsed
 
     @property
     def forward(self) -> Vector3:
@@ -87,6 +104,20 @@ class CarObject:
     def clear(self):
         # Shorthand for clearing the stack of all routines
         self.stack = []
+
+
+class Hitbox:
+    def __init__(self, length=0, width=0, height=0, offset=None):
+        self.length = length
+        self.width = width
+        self.height = height
+
+        if offset is None:
+            offset = Vector3()
+        self.offset = offset
+
+    def __getitem__(self, index):
+        return (self.length, self.width, self.height)[index]
 
 
 class BallObject:
@@ -351,6 +382,10 @@ class Vector3:
         if start.dot(s) < end.dot(s):
             return end
         return start
+
+    def dist(self, other: Vector3) -> float:
+        # Distance between 2 vectors
+        return math.sqrt((self[0] - other[0])**2 + (self[1] - other[1])**2 + (self[2] - other[2])**2)
 
 
 class Routine:

@@ -5,7 +5,7 @@ from copy import copy
 from typing import TYPE_CHECKING
 
 from objects import Vector3, Routine
-from utils import cap, defaultPD, defaultThrottle, sign, backsolve, shot_valid
+from utils import cap, defaultDrive, sign, backsolve, shot_valid, defaultPD, defaultThrottle
 
 if TYPE_CHECKING:
     from hive import MyHivemind
@@ -38,8 +38,7 @@ class Atba(Routine):
     def run(self, drone: CarObject, agent: MyHivemind):
         relative_target = agent.ball.location - drone.location
         local_target = drone.local(relative_target)
-        defaultPD(drone, local_target)
-        defaultThrottle(drone, 2300)
+        defaultDrive(drone, 2300, local_target)
 
 
 class Aerial(Routine):
@@ -209,7 +208,7 @@ class AerialShot(Routine):
         angles = defaultPD(drone, local_final_target)
 
         if self.jump_time == 0:
-            defaultThrottle(drone, speed_required)
+            defaultThrottle(drone, speed_required, angles, local_final_target)
             drone.controller.boost = False if abs(angles[1]) > 0.3 or drone.airborne else drone.controller.boost
             drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
             if acceleration_required[2] > self.jump_threshold:
@@ -338,9 +337,7 @@ class Goto(Routine):
 
         local_target = drone.local(final_target - drone.location)
 
-        angles = defaultPD(drone, local_target, self.direction)
-        defaultThrottle(drone, 2300, self.direction)
-
+        angles, _ = defaultDrive(drone, 2300, local_target)
         drone.controller.boost = False
         drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
 
@@ -387,16 +384,16 @@ class BackPost(Routine):
 
         local_target = drone.local(final_target - drone.location)
 
-        angles = defaultPD(drone, local_target, 1)
         if (drone.location - target).magnitude() > 1000:
-            defaultThrottle(drone, 2300, 1)
+            target_speed = 2300
         elif (drone.location - target).magnitude() > 500:
-            defaultThrottle(drone, 1300, 1)
+            target_speed = 1300
         elif (drone.location - target).magnitude() > 100:
-            defaultThrottle(drone, 500, 1)
+            target_speed = 500
         else:
-            defaultThrottle(drone, 1, 1)
+            target_speed = 1
 
+        angles, _ = defaultDrive(drone, target_speed, local_target)
         drone.controller.boost = False
         drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
 
@@ -439,8 +436,7 @@ class Shadow(Routine):
 
         local_target = drone.local(final_target - drone.location)
 
-        angles = defaultPD(drone, local_target, 1)
-        defaultThrottle(drone, 2300, 1)
+        angles, _ = defaultDrive(drone, 2300, local_target)
 
         drone.controller.boost = False
         drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
@@ -493,8 +489,7 @@ class GotoBoost(Routine):
 
         local_target = drone.local(final_target - drone.location)
 
-        angles = defaultPD(drone, local_target)
-        defaultThrottle(drone, 2300)
+        angles, _ = defaultDrive(drone, 2300, local_target)
 
         drone.controller.boost = self.boost.large if abs(angles[1]) < 0.3 else False
         drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
@@ -580,8 +575,7 @@ class JumpShot(Routine):
         agent.line(final_target - Vector3(0, 0, 100), final_target + Vector3(0, 0, 100), [0, 255, 0])
 
         # Calling our drive utils to get us going towards the final target
-        angles = defaultPD(drone, local_final_target, self.direction)
-        defaultThrottle(drone, speed_required, self.direction)
+        angles, _ = defaultDrive(drone, speed_required, local_final_target)
 
         agent.line(drone.location, drone.location + (self.shot_vector * 200), [255, 255, 255])
 
@@ -633,8 +627,7 @@ class CenterKickoff(Routine):
     def run(self, drone: CarObject, agent: MyHivemind):
         target = Vector3(0, 3800 * agent.side(), 0)
         local_target = drone.local(target - drone.location)
-        defaultPD(drone, local_target)
-        defaultThrottle(drone, 2300)
+        defaultDrive(drone, 2300, local_target)
         if local_target.magnitude() < 100:
             drone.pop()
             drone.push(DiagonalKickoff())
@@ -648,8 +641,7 @@ class OffCenterKickoff(Routine):
     def run(self, drone: CarObject, agent: MyHivemind):
         target = Vector3(0, 3116 * agent.side(), 0)
         local_target = drone.local(target - drone.location)
-        defaultPD(drone, local_target)
-        defaultThrottle(drone, 2300)
+        defaultDrive(drone, 2300, local_target)
         if local_target.magnitude() < 400:
             drone.pop()
             drone.push(DiagonalKickoff())
@@ -663,8 +655,7 @@ class DiagonalKickoff(Routine):
     def run(self, drone: CarObject, agent: MyHivemind):
         target = agent.ball.location + Vector3(0, 200 * agent.side(), 0)
         local_target = drone.local(target - drone.location)
-        defaultPD(drone, local_target)
-        defaultThrottle(drone, 2300)
+        defaultDrive(drone, 2300, local_target)
         if local_target.magnitude() < 650:
             drone.pop()
             drone.push(Flip(drone.local(agent.foe_goal.location - drone.location)))
@@ -733,8 +724,9 @@ class ShortShot(Routine):
 
         agent.line(final_target - Vector3(0, 0, 100), final_target + Vector3(0, 0, 100), [255, 255, 255])
 
-        angles = defaultPD(drone, drone.local(final_target - drone.location))
-        defaultThrottle(drone, 2300 if distance > 1600 else 2300 - cap(1600 * abs(angles[1]), 0, 2050))
+        local_target = drone.local(final_target - drone.location)
+        target_speed = 2300 if distance > 1600 else 2300 - cap(1600 * abs(defaultPD(drone, local_target)[1]), 0, 2050)
+        angles, _ = defaultDrive(drone, target_speed, local_target)
         drone.controller.boost = False if drone.airborne or abs(angles[1]) > 0.3 else drone.controller.boost
         drone.controller.handbrake = True if abs(angles[1]) > 2.3 else drone.controller.handbrake
 
