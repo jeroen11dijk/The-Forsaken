@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import random
 from copy import copy
 from typing import TYPE_CHECKING
 
-from rlbot.utils.game_state_util import GameState, BallState, CarState, Physics, Rotator
-from rlbot.utils.game_state_util import Vector3 as RLBot3
-
-from objects import Action, TestState, Vector3
-from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow, BackPost, Wait
-from tools import push_shot, setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
-from utils import closest_boost, distance
+from kickoffs import setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
+from objects import Action
+from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow
+from tools import find_any_shot
+from utils import closest_boost
 
 if TYPE_CHECKING:
     from hive import MyHivemind
@@ -32,7 +29,7 @@ def run_1v1(agent: MyHivemind):
     elif not agent.kickoff_flag:
         if len(drone.stack) < 1 or drone.action == Action.Shadowing:
             if drone.on_side or agent.conceding:
-                push_shot(drone, agent)
+                find_any_shot(drone)
         if len(drone.stack) < 1:
             drone.push(Shadow())
             drone.action = Action.Shadowing
@@ -53,20 +50,21 @@ def run_hivemind(agent: MyHivemind):
             drones.remove(drone)
             team = agent.friends + drones
             empty_stack = len(drone.stack) < 1 and drone.on_side and drone.closest
-            should_go = (drone.action == Action.Shadowing or drone.action == Action.Backpost) and drone.on_side and drone.closest
+            should_go = (
+                                drone.action == Action.Shadowing or drone.action == Action.Backpost) and drone.on_side and drone.closest
             conceding = (agent.conceding and not any(teammate.on_side for teammate in team)) or (
-                        agent.conceding and drone.on_side and drone.closest)
+                    agent.conceding and drone.on_side and drone.closest)
             cheating = drone.action == Action.Cheating
             if empty_stack or should_go or conceding or cheating:
-                push_shot(drone, agent)
+                find_any_shot(drone, agent)
             if len(drone.stack) < 1:
                 if drone.action == Action.Going:
                     if any(teammate.on_side for teammate in team) and drone.boost < 66:
                         drone.push(GotoBoost(closest_boost(agent, drone.location)))
                         drone.action = Action.Boost
                     else:
-                        drone.push(BackPost())
-                        drone.action = Action.Backpost
+                        drone.push(Shadow())
+                        drone.action = Action.Shadowing
                 elif drone.action == Action.Shadowing:
                     if all(teammate.on_side for teammate in team) and drone.boost < 66:
                         drone.push(GotoBoost(closest_boost(agent, drone.location)))
@@ -75,12 +73,8 @@ def run_hivemind(agent: MyHivemind):
                         drone.push(Shadow())
                         drone.action = Action.Shadowing
                 elif drone.action == Action.Boost:
-                    if any(teammate.on_side for teammate in team):
-                        drone.push(BackPost())
-                        drone.action = Action.Backpost
-                    else:
-                        drone.push(Shadow())
-                        drone.action = Action.Shadowing
+                    drone.push(Shadow())
+                    drone.action = Action.Shadowing
                 elif drone.action == Action.Backpost:
                     if all(teammate.on_side for teammate in team) and drone.boost < 66:
                         drone.push(GotoBoost(closest_boost(agent, drone.location)))
@@ -88,55 +82,3 @@ def run_hivemind(agent: MyHivemind):
                     else:
                         drone.push(Shadow())
                         drone.action = Action.Shadowing
-
-
-def run_test(agent: MyHivemind):
-    agent.debug_stack()
-    next_state = agent.test_state
-    if agent.test_state == TestState.Reset:
-        agent.test_time = agent.time
-
-        b_position = RLBot3(random.uniform(-1500, 1500),
-                            random.uniform(2500, 3500),
-                            random.uniform(300, 500))
-
-        b_velocity = RLBot3(random.uniform(-300, 300),
-                            random.uniform(-100, 100),
-                            random.uniform(900, 1000))
-
-        ball_state = BallState(physics=Physics(
-            location=b_position,
-            velocity=b_velocity,
-            rotation=Rotator(0, 0, 0),
-            angular_velocity=RLBot3(0, 0, 0)
-        ))
-
-        # this just initializes the car and ball
-        # to different starting points each time
-        c_position = RLBot3(b_position.x, 0 * random.uniform(-1500, -1000), 25)
-
-        # c_position = Vector3(200, -1000, 25)
-        car_state = CarState(physics=Physics(
-            location=c_position,
-            velocity=RLBot3(0, 800, 0),
-            rotation=Rotator(0, 1.6, 0),
-            angular_velocity=RLBot3(0, 0, 0)
-        ), boost_amount=100)
-
-        agent.set_game_state(GameState(
-            ball=ball_state,
-            cars={agent.drones[0].index: car_state})
-        )
-
-        next_state = TestState.Wait
-    elif agent.test_state == TestState.Wait:
-        if agent.time - agent.test_time > 0.2:
-            next_state = TestState.Init
-    elif agent.test_state == TestState.Init:
-        push_shot(agent.drones[0], agent)
-        next_state = TestState.Running
-    elif agent.test_state == TestState.Running:
-        if agent.time - agent.test_time > 5:
-            next_state = TestState.Reset
-            agent.drones[0].clear()
-    agent.test_state = next_state

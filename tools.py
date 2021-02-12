@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import TYPE_CHECKING
-from routines import DoubleJump
+from routines import DoubleJump, GroundShot, JumpShot
 import virxrlcu
 
 from utils import cap
@@ -20,8 +20,8 @@ class ShotType(Enum):
 
 
 SHOT_SWITCH = {
-    ShotType.GROUND: ground_shot,
-    ShotType.JUMP: jump_shot,
+    ShotType.GROUND: GroundShot,
+    ShotType.JUMP: JumpShot,
     ShotType.DOUBLE_JUMP: DoubleJump
 }
 
