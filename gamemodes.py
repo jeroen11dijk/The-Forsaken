@@ -56,7 +56,7 @@ def run_hivemind(agent: MyHivemind):
                     agent.conceding and drone.on_side and drone.closest)
             cheating = drone.action == Action.Cheating
             if empty_stack or should_go or conceding or cheating:
-                find_any_shot(drone, agent)
+                find_any_shot(drone)
             if len(drone.stack) < 1:
                 if drone.action == Action.Going:
                     if any(teammate.on_side for teammate in team) and drone.boost < 66:

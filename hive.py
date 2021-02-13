@@ -7,7 +7,7 @@ from rlbot.utils.structures.bot_input_struct import PlayerInput
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 
 # Dummy agent to call request MyHivemind.
-from gamemodes import run_1v1, run_hivemind, run_test
+from gamemodes import run_1v1, run_hivemind
 from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3, TestState
 from utils import distance
 
@@ -57,7 +57,7 @@ class MyHivemind(PythonHivemind):
         # drone_indices is a set, so you cannot just pick first element.
         index = next(iter(self.drone_indices))
         self.team = packet.game_cars[index].team
-        self.drones = [CarObject(i) for i in self.drone_indices]
+        self.drones = [CarObject(i, packet) for i in self.drone_indices]
         # goals
         self.friend_goal = GoalObject(self.team)
         self.foe_goal = GoalObject(not self.team)

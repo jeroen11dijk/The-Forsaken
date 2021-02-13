@@ -60,7 +60,7 @@ def setup_3s_kickoff(agent: MyHivemind):
                 drone.push(Goto(target))
                 drone.action = Action.Cheating
             else:
-                drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
+                drone.push(GotoBoost(closest_boost(agent, drone.location)))
                 drone.action = Action.Boost
     elif sorted(x_pos) == [-256, 0, 256]:
         for drone in agent.drones:
@@ -72,7 +72,7 @@ def setup_3s_kickoff(agent: MyHivemind):
                 drone.push(Goto(target))
                 drone.action = Action.Cheating
             else:
-                drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
+                drone.push(GotoBoost(closest_boost(agent, drone.location)))
                 drone.action = Action.Boost
     elif -2048 in x_pos or 2048 in x_pos:
         for drone in agent.drones:
@@ -84,7 +84,7 @@ def setup_3s_kickoff(agent: MyHivemind):
                 drone.push(Goto(target))
                 drone.action = Action.Cheating
             elif round(drone.location.x) == 0:
-                drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
+                drone.push(GotoBoost(closest_boost(agent, drone.location)))
                 drone.action = Action.Boost
             else:
                 if 0 in x_pos:
@@ -92,7 +92,7 @@ def setup_3s_kickoff(agent: MyHivemind):
                     drone.push(Goto(target))
                     drone.action = Action.Cheating
                 else:
-                    drone.push(GotoBoost(closest_boost(agent, drone.location), agent.ball.location))
+                    drone.push(GotoBoost(closest_boost(agent, drone.location)))
                     drone.action = Action.Boost
 
 

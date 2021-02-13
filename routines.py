@@ -307,7 +307,6 @@ class DoubleJump(Routine):
 class Aerial(Routine):
 
     def __init__(self, intercept_time, targets=None, fast_aerial=True):
-        super().__init__()
         self.intercept_time = intercept_time
         self.fast_aerial = fast_aerial
         self.targets = targets
@@ -498,7 +497,6 @@ class Goto(Routine):
     # Brake brings the car to slow down to 0 when it gets to it's destination
     # Slow is for small targets, and it forces the car to slow down a bit when it gets close to the target
     def __init__(self, target, vector=None, brake=False, slow=False):
-        super().__init__()
         self.target = target
         self.vector = vector
         self.brake = brake
@@ -516,7 +514,7 @@ class Goto(Routine):
         if self.brake and (
                 self.f_brake or distance_remaining * 0.95 < (drone.local_velocity().x ** 2 * -1) / (2 * -3500)):
             self.f_brake = True
-            Brake.run(drone, manual=manual)
+            Brake.run(drone, agent, manual=manual)
             return
 
         if not self.brake and not manual and distance_remaining < 320:
@@ -570,7 +568,7 @@ class Goto(Routine):
 class Shadow(Routine):
     def __init__(self):
         super().__init__()
-        self.goto = Goto(Vector3(), brake=True)
+        self.goto = Goto(Vector3(0, 0, 0), brake=True)
         self.retreat = Retreat()
 
     def run(self, drone: CarObject, agent: MyHivemind):
@@ -581,7 +579,7 @@ class Shadow(Routine):
 
         if self_to_target < 100 * (
                 drone.velocity.magnitude() / 500) and ball_loc.y < -640 and drone.velocity.magnitude() < 50 and abs(
-                Vector3(1, 0, 0).angle2D(drone.local_location(agent.ball.location))) > 1:
+            Vector3(1, 0, 0).angle2D(drone.local_location(agent.ball.location))) > 1:
             drone.pop()
             if len(agent.friends) > 1:
                 drone.push(FaceTarget(ball=True))
@@ -604,7 +602,7 @@ class Shadow(Routine):
         ball_loc.y *= side(drone.team)
 
         if ball_loc.y < -2560 or (ball_loc.y < agent.ball.location.y * side(drone.team)):
-            ball_loc = Vector3(agent.ball.location.x, agent.ball.location.y * side(agent.team) - 640)
+            ball_loc = Vector3(agent.ball.location.x, agent.ball.location.y * side(agent.team) - 640, 0)
 
         return ball_loc
 
@@ -618,7 +616,7 @@ class Shadow(Routine):
         if target.y * side(agent.team) > -1280:
             # use linear algebra to find the proper x coord for us to stop a shot going to the net
             # y = mx + b <- yes, finally! 7th grade math is paying off xD
-            p1 = self.retreat.get_target(agent)
+            p1 = self.retreat.get_target(drone, agent)
             p2 = ball_loc * Vector3(1, side(agent.team), 0)
             try:
                 m = (p2.y - p1.y) / (p2.x - p1.x)
@@ -636,7 +634,7 @@ class Shadow(Routine):
 class Retreat(Routine):
     def __init__(self):
         super().__init__()
-        self.goto = Goto(Vector3(), brake=True)
+        self.goto = Goto(Vector3(0, 0, 0), brake=True)
 
     def run(self, drone: CarObject, agent: MyHivemind):
         ball = self.get_ball_loc(drone, agent)
@@ -659,11 +657,11 @@ class Retreat(Routine):
 
     def get_ball_loc(self, drone: CarObject, agent: MyHivemind):
         ball_slice = drone.ball_prediction_struct.slices[180].physics.location
-        ball = Vector3(ball_slice.x, cap(ball_slice.y, -5120, 5120))
+        ball = Vector3(ball_slice.x, cap(ball_slice.y, -5120, 5120), 0)
         ball.y *= side(agent.team)
 
         if ball.y < agent.ball.location.y * side(agent.team):
-            ball = Vector3(agent.ball.location.x, agent.ball.location.y * side(agent.team) + 640)
+            ball = Vector3(agent.ball.location.x, agent.ball.location.y * side(agent.team) + 640, 0)
 
         return ball
 

@@ -109,9 +109,9 @@ class CarObject:
         return self.orientation.forward
 
     @property
-    def left(self) -> Vector3:
+    def right(self) -> Vector3:
         # A vector pointing left relative to the cars orientation. Its magnitude is 1
-        return self.orientation.left
+        return self.orientation.right
 
     @property
     def up(self) -> Vector3:
@@ -224,15 +224,15 @@ class Matrix3:
             Vector3(cy * sp * sr - cr * sy, sy * sp * sr + cr * cy, -cp * sr),
             Vector3(-cr * cy * sp - sr * sy, -cr * sy * sp + sr * cy, cp * cr)]
         self.forward: Vector3
-        self.left: Vector3
+        self.right: Vector3
         self.up: Vector3
-        self.forward, self.left, self.up = self.data
+        self.forward, self.right, self.up = self.data
 
     def __getitem__(self, key: int) -> Vector3:
         return self.data[key]
 
     def dot(self, vector) -> Vector3:
-        return Vector3(self.forward.dot(vector), self.left.dot(vector), self.up.dot(vector))
+        return Vector3(self.forward.dot(vector), self.right.dot(vector), self.up.dot(vector))
 
 
 class Vector3:
@@ -418,9 +418,6 @@ class Vector3:
 
 
 class Routine:
-    def __init__(self):
-        pass
-
     def run(self, drone: CarObject, agent: MyHivemind):
         pass
 

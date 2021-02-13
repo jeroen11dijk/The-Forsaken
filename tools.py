@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import TYPE_CHECKING
-from routines import DoubleJump, GroundShot, JumpShot
+
 import virxrlcu
 
+from objects import Action
+from routines import DoubleJump, GroundShot, JumpShot, Aerial
 from utils import cap
 
 if TYPE_CHECKING:
-    from objects import CarObject, Vector3, Action
-    from routines import Aerial
+    from objects import CarObject, Vector3
 
 
 class ShotType(Enum):
@@ -200,7 +201,7 @@ def get_slices(drone: CarObject, cap_):
     end_slices = None
 
     # If we're shooting, crop the struct
-    if drone.action == Action.Going and drone.stack[0].__class__.__name__ != "short_shot":
+    if drone.action == Action.Going and len(drone.stack) > 0 and drone.stack[0].__class__.__name__ != "short_shot":
         # Get the time remaining
         time_remaining = drone.stack[0].intercept_time - drone.time
         if 0.5 > time_remaining >= 0:
