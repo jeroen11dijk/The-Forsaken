@@ -201,7 +201,7 @@ def get_slices(drone: CarObject, cap_):
     end_slices = None
 
     # If we're shooting, crop the struct
-    if drone.action == Action.Going and len(drone.stack) > 0 and drone.stack[0].__class__.__name__ != "short_shot":
+    if drone.action == Action.Going and len(drone.stack) > 0 and drone.stack[0].__class__.__name__ != "ShortShot":
         # Get the time remaining
         time_remaining = drone.stack[0].intercept_time - drone.time
         if 0.5 > time_remaining >= 0:
