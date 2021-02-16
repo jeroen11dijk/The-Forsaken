@@ -26,6 +26,7 @@ def run_1v1(agent: MyHivemind):
                 shot = find_any_shot(drone)
                 if shot is not None:
                     drone.push(shot)
+                    drone.action = Action.Going
         if len(drone.stack) < 1:
             drone.push(Shadow())
             drone.action = Action.Shadowing
