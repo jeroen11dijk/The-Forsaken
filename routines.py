@@ -32,45 +32,33 @@ jump_max_duration = 0.2
 
 # This file holds all of the mechanical tasks, called "routines", that the bot can do
 
-class CenterKickoff(Routine):
+class KickOff(Routine):
     def __init__(self):
         super().__init__()
+        self.start_time = -1
+        self.flip = False
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        target = Vector3(0, 3800 * agent.side(), 0)
-        local_target = drone.local(target - drone.location)
-        defaultDrive(drone, 2300, local_target)
-        if local_target.magnitude() < 100:
+        if self.start_time == -1:
+            self.start_time = agent.time
+
+        if self.flip or agent.time - self.start_time > 3:
             drone.pop()
-            drone.push(DiagonalKickoff())
-            drone.push(Flip(Vector3(1, 0, 0)))
+            return
 
+        target = agent.ball.location + Vector3(0, (
+            200 if -600 > drone.gravity.z > -700 else 50) * side(agent.team), 0)
+        local_target = drone.local_location(target)
 
-class OffCenterKickoff(Routine):
-    def __init__(self):
-        super().__init__()
+        defaultPD(drone, local_target)
+        drone.controller.throttle = 1
+        drone.controller.boost = True
 
-    def run(self, drone: CarObject, agent: MyHivemind):
-        target = Vector3(0, 3116 * agent.side(), 0)
-        local_target = drone.local(target - drone.location)
-        defaultDrive(drone, 2300, local_target)
-        if local_target.magnitude() < 400:
-            drone.pop()
-            drone.push(DiagonalKickoff())
-            drone.push(Flip(drone.local(agent.ball.location - drone.location)))
+        distance = local_target.magnitude()
 
-
-class DiagonalKickoff(Routine):
-    def __init__(self):
-        super().__init__()
-
-    def run(self, drone: CarObject, agent: MyHivemind):
-        target = agent.ball.location + Vector3(0, 200 * agent.side(), 0)
-        local_target = drone.local(target - drone.location)
-        defaultDrive(drone, 2300, local_target)
-        if local_target.magnitude() < 650:
-            drone.pop()
-            drone.push(Flip(drone.local(agent.foe_goal.location - drone.location)))
+        if distance < 550:
+            self.flip = True
+            drone.push(Flip(drone.local_location(agent.foe_goal.location)))
 
 
 class WaveDash(Routine):

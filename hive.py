@@ -104,7 +104,7 @@ class MyHivemind(PythonHivemind):
         if self.odd_tick > 3:
             self.odd_tick = 0
         self.prev_kickoff_flag = self.kickoff_flag
-        self.kickoff_flag = self.game.kickoff or not self.game.round_active
+        self.kickoff_flag = self.game.kickoff and self.game.round_active
         if not self.prev_kickoff_flag and self.kickoff_flag:
             for drone in self.drones:
                 drone.clear()

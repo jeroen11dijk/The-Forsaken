@@ -5,27 +5,21 @@ from typing import TYPE_CHECKING
 
 from kickoffs import setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
 from objects import Action
-from routines import DiagonalKickoff, GotoBoost, OffCenterKickoff, CenterKickoff, Shadow
+from routines import KickOff, GotoBoost, Shadow
 from tools import find_any_shot
 from utils import closest_boost
 
 if TYPE_CHECKING:
     from hive import MyHivemind
+    from objects import CarObject
 
 
 def run_1v1(agent: MyHivemind):
     agent.debug_stack()
-    drone = agent.drones[0]
+    drone: CarObject = agent.drones[0]
     if agent.kickoff_flag and len(drone.stack) < 1:
-        if abs(drone.location.x) < 250:
-            drone.push(CenterKickoff())
-            drone.action = Action.Going
-        elif abs(drone.location.x) < 1000:
-            drone.push(OffCenterKickoff())
-            drone.action = Action.Going
-        else:
-            drone.push(DiagonalKickoff())
-            drone.action = Action.Going
+        drone.push(KickOff())
+        drone.action = Action.Going
     elif not agent.kickoff_flag:
         if len(drone.stack) < 1 or drone.action == Action.Shadowing:
             if drone.on_side or agent.conceding:
