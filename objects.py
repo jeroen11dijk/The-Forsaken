@@ -39,6 +39,7 @@ class CarObject:
         self.delta_time = 1 / 120
         self.boost_accel = 991 + (2 / 3)
         self.gravity = Vector3(0, 0, -650)
+        self.goals = 0
         self.ball_prediction_struct = None
         if packet is not None:
             car = packet.game_cars[self.index]
@@ -85,6 +86,7 @@ class CarObject:
         self.second_closest: bool = False
         self.delta_time = packet.game_info.seconds_elapsed - self.time
         self.time = packet.game_info.seconds_elapsed
+        self.goals = car.score_info.goals
 
     def get_raw(self, force_on_ground=False):
         return (

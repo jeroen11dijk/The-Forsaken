@@ -46,11 +46,9 @@ class MyHivemind(PythonHivemind):
         self.kickoff_flag: bool = False
         self.prev_kickoff_flag: bool = False
         self.conceding: bool = False
-        self.last_time: float = 0
-        self.my_score: float = 0
-        self.foe_score: float = 0
-        self.test_state = TestState.Reset
-        self.test_time = 0
+        # If true we will go for more stuff
+        # Initialized as true since we are always desperate
+        self.desperate = False
 
     def initialize_hive(self, packet: GameTickPacket) -> None:
         # Find out team by looking at packet.
@@ -97,6 +95,7 @@ class MyHivemind(PythonHivemind):
             pad.update(packet)
         for drone in self.drones:
             drone.update(packet)
+        self.desperate = sum([car.goals for car in self.foes]) > sum([car.goals for car in self.friends]) + 1
         self.ball.update(packet)
         self.game.update(packet)
         self.time = packet.game_info.seconds_elapsed
