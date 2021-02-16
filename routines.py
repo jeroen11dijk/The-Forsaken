@@ -798,7 +798,7 @@ class JumpShot(Routine):
             self.needed_jump_time = virxrlcu.get_jump_time(ball.z - drone.location.z, drone.velocity.z, drone.gravity.z)
 
         direction = (self.ball_location - drone.location).normalize()
-        self.shot_vector = direction if self.targets is None else direction.clamp2D(
+        self.shot_vector = direction if self.targets is None else direction.clamp(
             (self.targets[0] - self.ball_location).normalize(), (self.targets[1] - self.ball_location).normalize())
         self.offset_target = self.ball_location - (self.shot_vector * 92.75)
 

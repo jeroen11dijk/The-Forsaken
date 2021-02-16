@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING
 
 import virxrlcu
 
-from objects import Action
+from objects import Action, Vector3
 from routines import DoubleJump, GroundShot, JumpShot, Aerial
 from utils import cap
 
 if TYPE_CHECKING:
-    from objects import CarObject, Vector3
+    from objects import CarObject
 
 
 class ShotType(Enum):

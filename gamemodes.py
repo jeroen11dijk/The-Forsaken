@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from kickoffs import setup_3s_kickoff, setup_2s_kickoff, setup_other_kickoff
 from objects import Action
 from routines import KickOff, GotoBoost, Shadow
-from tools import find_any_shot
+from tools import find_any_shot, find_shot
 from utils import closest_boost
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ def run_1v1(agent: MyHivemind):
     elif not agent.kickoff_flag:
         if len(drone.stack) < 1 or drone.action == Action.Shadowing:
             if drone.on_side or agent.conceding:
-                shot = find_any_shot(drone)
+                shot = find_shot(drone, (agent.foe_goal.left_post, agent.foe_goal.right_post))
                 if shot is not None:
                     drone.push(shot)
                     drone.action = Action.Going
