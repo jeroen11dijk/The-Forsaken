@@ -81,8 +81,9 @@ class MyHivemind(PythonHivemind):
         self.foes = [CarObject(i, packet) for i in range(packet.num_cars) if packet.game_cars[i].team != self.team]
 
     def line(self, start: Vector3, end: Vector3, color=None):
-        color = color if color is not None else [255, 255, 255]
-        self.renderer.draw_line_3d(start, end, self.renderer.create_color(255, *color))
+        color = color if color is not None else self.renderer.grey()
+        self.renderer.draw_line_3d(start.copy(), end.copy(),
+                                   self.renderer.create_color(255, *color) if type(color) in {list, tuple} else color)
 
     def preprocess(self, packet: GameTickPacket):
         # Calling the update functions for all of the objects

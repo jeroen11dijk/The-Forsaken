@@ -29,7 +29,9 @@ def run_1v1(agent: MyHivemind):
     elif not agent.kickoff_flag:
         if len(drone.stack) < 1 or drone.action == Action.Shadowing:
             if drone.on_side or agent.conceding:
-                find_any_shot(drone)
+                shot = find_any_shot(drone)
+                if shot is not None:
+                    drone.push(shot)
         if len(drone.stack) < 1:
             drone.push(Shadow())
             drone.action = Action.Shadowing

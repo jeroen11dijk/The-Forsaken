@@ -327,8 +327,6 @@ class Aerial(Routine):
         self.targets = shot.targets
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        if not agent.shooting:
-            agent.shooting = True
 
         T = self.intercept_time - agent.time
         xf = drone.location + drone.velocity * T + 0.5 * drone.gravity * T * T
@@ -799,8 +797,6 @@ class JumpShot(Routine):
         self.targets = shot.targets
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        if not agent.shooting:
-            agent.shooting = True
 
         T = self.intercept_time - agent.time
         # Capping T above 0 to prevent division problems
@@ -979,8 +975,6 @@ class GroundShot(Routine):
         self.targets = shot.targets
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        if not agent.shooting:
-            agent.shooting = True
 
         T = self.intercept_time - agent.time
         # Capping T above 0 to prevent division problems
@@ -1136,9 +1130,6 @@ class ShortShot(Routine):
         self.start_time = None
 
     def run(self, drone: CarObject, agent: MyHivemind):
-        if not agent.shooting or agent.shot_weight != -1:
-            agent.shooting = True
-            agent.shot_weight = -1
 
         if self.start_time is None:
             self.start_time = agent.time
