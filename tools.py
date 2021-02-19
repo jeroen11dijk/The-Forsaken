@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import virxrlcu
 
-from objects import Action, Vector3
+from objects import Vector3
 from routines import DoubleJump, GroundShot, JumpShot, Aerial
 from utils import cap
 
@@ -201,7 +201,8 @@ def get_slices(drone: CarObject, cap_):
     end_slices = None
 
     # If we're shooting, crop the struct
-    if drone.action == Action.Going and len(drone.stack) > 0 and drone.stack[0].__class__.__name__ != "ShortShot":
+    if len(drone.stack) > 0 and drone.stack[0].__class__.__name__ != "ShortShot" and hasattr(drone.stack[0],
+                                                                                             "intercept_time"):
         # Get the time remaining
         time_remaining = drone.stack[0].intercept_time - drone.time
         if 0.5 > time_remaining >= 0:

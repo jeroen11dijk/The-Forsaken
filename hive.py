@@ -8,7 +8,7 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket
 
 # Dummy agent to call request MyHivemind.
 from gamemodes import run_1v1, run_hivemind
-from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3, TestState
+from objects import CarObject, BoostObject, BallObject, GoalObject, GameObject, Vector3
 from utils import distance
 
 

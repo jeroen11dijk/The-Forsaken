@@ -25,6 +25,8 @@ def run_1v1(agent: MyHivemind):
             if drone.on_side or agent.conceding:
                 shot = find_shot(drone, (agent.foe_goal.left_post, agent.foe_goal.right_post))
                 if shot is not None:
+                    shot = find_shot(drone, (agent.foe_goal.left_post, agent.foe_goal.right_post))
+                if shot is not None:
                     drone.push(shot)
                     drone.action = Action.Going
                 else:
@@ -58,12 +60,16 @@ def run_hivemind(agent: MyHivemind):
             team = agent.friends + drones
             empty_stack = len(drone.stack) < 1 and drone.on_side and drone.closest
             should_go = (
-                                drone.action == Action.Shadowing or drone.action == Action.Backpost) and drone.on_side and drone.closest
+                                drone.action == Action.Shadowing) and drone.on_side and drone.closest
             conceding = (agent.conceding and not any(teammate.on_side for teammate in team)) or (
                     agent.conceding and drone.on_side and drone.closest)
             cheating = drone.action == Action.Cheating
             if empty_stack or should_go or conceding or cheating:
-                find_any_shot(drone)
+                if empty_stack or drone.stack[0].__class__.__name__ not in ["GroundShot", "JumpShot", "DoubleJump"]:
+                    shot = find_any_shot(drone)
+                    if shot is not None:
+                        drone.push(shot)
+                        drone.action = Action.Going
             if len(drone.stack) < 1:
                 if drone.action == Action.Going:
                     if any(teammate.on_side for teammate in team) and drone.boost < 66:
@@ -82,10 +88,3 @@ def run_hivemind(agent: MyHivemind):
                 elif drone.action == Action.Boost:
                     drone.push(Shadow())
                     drone.action = Action.Shadowing
-                elif drone.action == Action.Backpost:
-                    if all(teammate.on_side for teammate in team) and drone.boost < 66:
-                        drone.push(GotoBoost(closest_boost(agent, drone.location)))
-                        drone.action = Action.Boost
-                    else:
-                        drone.push(Shadow())
-                        drone.action = Action.Shadowing
