@@ -367,7 +367,7 @@ class Vector3:
     def dot(self, value: Vector3) -> float:
         return self[0] * value[0] + self[1] * value[1] + self[2] * value[2]
 
-    def cross(self, value) -> Vector3:
+    def cross(self, value: Vector3) -> Vector3:
         return Vector3((self[1] * value[2]) - (self[2] * value[1]), (self[2] * value[0]) - (self[0] * value[2]),
                        (self[0] * value[1]) - (self[1] * value[0]))
 
@@ -412,11 +412,11 @@ class Vector3:
 
     def dist(self, other: Vector3) -> float:
         # Distance between 2 vectors
-        return math.sqrt((self[0] - other[0])**2 + (self[1] - other[1])**2 + (self[2] - other[2])**2)
+        return math.sqrt((self[0] - other[0]) ** 2 + (self[1] - other[1]) ** 2 + (self[2] - other[2]) ** 2)
 
     def flat_dist(self, other: Vector3) -> float:
         # Distance between 2 vectors
-        return math.sqrt((self[0] - other[0])**2 + (self[1] - other[1])**2)
+        return math.sqrt((self[0] - other[0]) ** 2 + (self[1] - other[1]) ** 2)
 
 
 class Routine:
@@ -431,10 +431,3 @@ class Action(Enum):
     Nothing = 3
     Cheating = 4
     Backpost = 5
-
-
-class TestState(Enum):
-    Reset = 0
-    Wait = 1
-    Init = 2
-    Running = 3
