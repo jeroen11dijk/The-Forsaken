@@ -21,11 +21,15 @@ def run_1v1(agent: MyHivemind):
         drone.push(KickOff())
         drone.action = Action.Going
     elif not agent.kickoff_flag:
+        if agent.conceding and drone.action != Action.Saving:
+            save = find_any_shot(drone)
+            if save is not None:
+                drone.clear()
+                drone.push(save)
+                drone.action = Action.Saving
         if len(drone.stack) < 1 or drone.action == Action.Shadowing:
-            if drone.on_side or agent.conceding:
+            if drone.on_side:
                 shot = find_shot(drone, (agent.foe_goal.left_post, agent.foe_goal.right_post))
-                if shot is not None:
-                    shot = find_shot(drone, (agent.foe_goal.left_post, agent.foe_goal.right_post))
                 if shot is not None:
                     drone.push(shot)
                     drone.action = Action.Going
@@ -59,8 +63,7 @@ def run_hivemind(agent: MyHivemind):
             drones.remove(drone)
             team = agent.friends + drones
             empty_stack = len(drone.stack) < 1 and drone.on_side and drone.closest
-            should_go = (
-                                drone.action == Action.Shadowing) and drone.on_side and drone.closest
+            should_go = (drone.action == Action.Shadowing) and drone.on_side and drone.closest
             conceding = (agent.conceding and not any(teammate.on_side for teammate in team)) or (
                     agent.conceding and drone.on_side and drone.closest)
             cheating = drone.action == Action.Cheating

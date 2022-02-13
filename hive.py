@@ -79,7 +79,7 @@ class MyHivemind(PythonHivemind):
         self.foes = [CarObject(i, packet) for i in range(packet.num_cars) if packet.game_cars[i].team != self.team]
 
     def line(self, start: Vector3, end: Vector3, color=None):
-        color = color if color is not None else self.renderer.grey()
+        color = color if color is not None else self.renderer.red()
         self.renderer.draw_line_3d(start.copy(), end.copy(),
                                    self.renderer.create_color(255, *color) if type(color) in {list, tuple} else color)
 
@@ -172,7 +172,7 @@ class MyHivemind(PythonHivemind):
         else:
             run_hivemind(self)
 
-    def side(self) -> float:
+    def side(self) -> int:
         # returns -1 for blue team and 1 for orange team
         if self.team == 0:
             return -1

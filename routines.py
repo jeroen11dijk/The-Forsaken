@@ -561,25 +561,14 @@ class Shadow(Routine):
         target = self.get_target(drone, agent, ball_loc)
 
         self_to_target = drone.location.flat_dist(target)
-
-        if self_to_target < 100 * (
-                drone.velocity.magnitude() / 500) and ball_loc.y < -640 and drone.velocity.magnitude() < 50 and abs(
-            Vector3(1, 0, 0).angle2D(drone.local_location(agent.ball.location))) > 1:
+        if self_to_target < 300:
             drone.pop()
-            if len(agent.friends) > 1:
-                drone.push(FaceTarget(ball=True))
+            drone.push(FaceTarget(ball=True))
         else:
             self.goto.target = target
             self.goto.vector = ball_loc * Vector3(0, side(agent.team), 0) if target.y * side(
                 agent.team) < 1280 else None
             self.goto.run(drone, agent)
-
-    def is_viable(self, drone: CarObject, agent: MyHivemind):
-        ball_loc = self.get_ball_loc(drone, agent)
-        target = self.get_target(drone, agent, ball_loc)
-        self_to_target = drone.location.flat_dist(target)
-
-        return self_to_target > 320
 
     def get_ball_loc(self, drone: CarObject, agent: MyHivemind):
         ball_slice = drone.ball_prediction_struct.slices[min(round(180 * 1.1), 6)].physics.location
@@ -702,7 +691,7 @@ class FaceTarget(Routine):
     @staticmethod
     def get_ball_target(drone: CarObject):
         ball = drone.ball_prediction_struct.slices[180].physics.location
-        return Vector3(ball.x, cap(ball.y, -5120, 5120))
+        return Vector3(ball.x, cap(ball.y, -5120, 5120), ball.z)
 
     def run(self, drone: CarObject, agent: MyHivemind):
         if self.ball:

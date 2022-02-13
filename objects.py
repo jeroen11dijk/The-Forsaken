@@ -431,3 +431,4 @@ class Action(Enum):
     Nothing = 3
     Cheating = 4
     Backpost = 5
+    Saving = 6
