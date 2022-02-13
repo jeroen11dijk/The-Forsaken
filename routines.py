@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import math
-from copy import copy
 from typing import TYPE_CHECKING
 
 import virxrlcu
 
 from objects import Vector3, Routine
-from utils import cap, defaultDrive, sign, backsolve, shot_valid, defaultPD, defaultThrottle, cap_in_field, \
+from utils import cap, defaultDrive, sign, defaultPD, cap_in_field, \
     dodge_impulse, side
 
 if TYPE_CHECKING:
     from hive import MyHivemind
-    from objects import CarObject, BoostObject
+    from objects import CarObject
 
 gravity: Vector3 = Vector3(0, 0, -650)
 
@@ -407,7 +406,7 @@ class Aerial(Routine):
                 delta_v -= drone.boost_accel * drone.delta_time * 0.1
 
             if abs(delta_v) >= throttle_accel * drone.delta_time:
-                drone.controller.throttle = cap(delta_v / (throttle_accel * drone.delta_time), -1, 1)
+                drone.controller.throttle = cap(delta_v / (throttle_accel * drone.delta_time) + 0.001, -1, 1)
 
         if T <= -0.2 or (not self.jumping and not drone.airborne) or (
                 not self.jumping and T > 1.5 and not virxrlcu.aerial_shot_is_viable(T, drone.boost_accel,
@@ -907,7 +906,7 @@ class JumpShot(Routine):
                     delta_v -= drone.boost_accel * 0.1
 
                 if abs(delta_v) >= throttle_accel * drone.delta_time:
-                    drone.controller.throttle = cap(delta_v / (throttle_accel * drone.delta_time), -1, 1)
+                    drone.controller.throttle = cap(delta_v / (throttle_accel * drone.delta_time) + 0.001, -1, 1)
 
             if T <= -0.8 or (not drone.airborne and self.counter >= 3):
                 drone.pop()
@@ -975,7 +974,7 @@ class GroundShot(Routine):
             self.ball_location = Vector3(ball.x, ball.y, ball.z)
 
         direction = (self.ball_location - drone.location).normalize()
-        self.shot_vector = direction if self.targets is None else direction.clamp2D(
+        self.shot_vector = direction if self.targets is None else direction.clamp(
             (self.targets[0] - self.ball_location).normalize(), (self.targets[1] - self.ball_location).normalize())
         self.offset_target = self.ball_location - (self.shot_vector * 92.75)
 
@@ -1131,7 +1130,7 @@ class ShortShot(Routine):
         # If we are approaching the ball from the wrong side the car will try to only hit the very edge of the ball
         left_vector = car_to_ball.cross(Vector3(0, 0, 1))
         right_vector = car_to_ball.cross(Vector3(0, 0, -1))
-        target_vector = -ball_to_target.clamp2D(left_vector, right_vector)
+        target_vector = -ball_to_target.clamp(left_vector, right_vector)
         final_target = agent.ball.location + (target_vector * (distance / 2))
         angle_to_target = abs(Vector3(1, 0, 0).angle2D(drone.local_location(final_target)))
         distance_remaining = drone.location.dist(final_target) - drone.hitbox.length * 0.45
